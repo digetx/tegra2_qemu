@@ -2989,7 +2989,8 @@ void register_cp_regs_for_features(ARMCPU *cpu)
 {
     /* Register all the coprocessor registers based on feature bits */
     CPUARMState *env = &cpu->env;
-    if (arm_feature(env, ARM_FEATURE_M)) {
+    if (arm_feature(env, ARM_FEATURE_M) ||
+            arm_feature(env, ARM_FEATURE_NOCP15)) {
         /* M profile has no coprocessor registers */
         return;
     }

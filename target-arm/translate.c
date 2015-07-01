@@ -4083,6 +4083,9 @@ static void gen_nop_hint(DisasContext *s, int val)
         s->is_jmp = DISAS_WFE;
         break;
     case 4: /* sev */
+        gen_set_pc_im(s, s->pc);
+        s->is_jmp = DISAS_SEV;
+        break;
     case 5: /* sevl */
         /* TODO: Implement SEV, SEVL and WFE.  May help SMP performance.  */
     default: /* nop */
@@ -7677,11 +7680,16 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                 ARCH(6K);
                 gen_clrex(s);
                 return;
-            case 4: /* dsb */
             case 5: /* dmb */
+                ARCH(7);
+                gen_set_pc_im(s, s->pc);
+                s->is_jmp = DISAS_NOP;
+                return;
+            case 4: /* dsb */
             case 6: /* isb */
                 ARCH(7);
                 /* We don't emulate caches so these are a no-op.  */
+                gen_nop_hint(s, -1);
                 return;
             default:
                 goto illegal_op;
@@ -11339,6 +11347,12 @@ static inline void gen_intermediate_code_internal(ARMCPU *cpu,
             break;
         case DISAS_WFE:
             gen_helper_wfe(cpu_env);
+            break;
+        case DISAS_SEV:
+            gen_helper_sev(cpu_env);
+            break;
+        case DISAS_NOP:
+            gen_helper_nop(cpu_env);
             break;
         case DISAS_SWI:
             gen_exception(EXCP_SWI, syn_aa32_svc(dc->svc_imm, dc->thumb));

@@ -209,7 +209,7 @@ uint32_t HELPER(usat16)(CPUARMState *env, uint32_t x, uint32_t shift)
     return res;
 }
 
-void HELPER(wfi)(CPUARMState *env)
+void __attribute__((weak)) HELPER(wfi)(CPUARMState *env)
 {
     CPUState *cs = CPU(arm_env_get_cpu(env));
 
@@ -218,12 +218,29 @@ void HELPER(wfi)(CPUARMState *env)
     cpu_loop_exit(cs);
 }
 
-void HELPER(wfe)(CPUARMState *env)
+void __attribute__((weak)) HELPER(wfe)(CPUARMState *env)
 {
     CPUState *cs = CPU(arm_env_get_cpu(env));
 
     /* Don't actually halt the CPU, just yield back to top
      * level loop
+     */
+    cs->exception_index = EXCP_YIELD;
+    cpu_loop_exit(cs);
+}
+
+void __attribute__((weak)) HELPER(sev)(CPUARMState *env)
+{
+    CPUState *cs = CPU(arm_env_get_cpu(env));
+
+    cpu_loop_exit(cs);
+}
+
+void HELPER(nop)(CPUARMState *env)
+{
+    CPUState *cs = CPU(arm_env_get_cpu(env));
+
+    /* Just yield back to top level loop
      */
     cs->exception_index = EXCP_YIELD;
     cpu_loop_exit(cs);

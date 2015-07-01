@@ -1,0 +1,18 @@
+QEMU_CFLAGS += -I$(SRC_PATH)/hw/arm/tegra2/ahb/host1x/include
+QEMU_CFLAGS += -I$(SRC_PATH)/hw/display
+
+obj-y += core/cdma.o
+obj-y += core/cmd_processor.o
+obj-y += core/irqs.o
+obj-y += core/module.o
+obj-y += core/syncpts.o
+
+obj-y += host1x-bus.o
+obj-y += host1x_channel.o
+
+obj-y += modules/dc/dc.o
+obj-y += modules/gr2d/gr2d.o
+obj-y += modules/gr2d/gr2d_module.o
+obj-y += modules/gr2d/engine.o
+obj-y += modules/gr3d/gr3d_module.o
+obj-y += modules/host1x/host1x_module.o

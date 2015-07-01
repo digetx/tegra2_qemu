@@ -88,6 +88,8 @@ static inline int get_mem_index(DisasContext *s)
 #define DISAS_WFE 7
 #define DISAS_HVC 8
 #define DISAS_SMC 9
+#define DISAS_SEV 91
+#define DISAS_NOP 92
 
 #ifdef TARGET_AARCH64
 void a64_translate_init(void);
