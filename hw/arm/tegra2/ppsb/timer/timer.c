@@ -81,7 +81,8 @@ static uint64_t tegra_timer_priv_read(void *opaque, hwaddr offset,
         ret = s->pcr.reg32;
         break;
     default:
-        exit(-1);
+        TRACE_READ(s->iomem.addr, offset, ret);
+        g_assert_not_reached();
         break;
     }
 
@@ -124,8 +125,8 @@ static void tegra_timer_priv_write(void *opaque, hwaddr offset,
         }
         break;
     default:
-        exit(-1);
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
+        g_assert_not_reached();
         break;
     }
 }
