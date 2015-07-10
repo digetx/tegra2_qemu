@@ -26,19 +26,9 @@
 #define NV_HOST1X_NB_MLOCKS             16
 #define CHANNELS_NB                     8
 
-static inline bool find_set_bit(uint32_t val, uint32_t *itr, uint32_t size)
-{
-    if (val == 0)
-        return false;
-
-    for (; *itr < size; (*itr)++)
-        if ((val >> *itr) & 1)
-            return true;
-
-    return false;
-}
-
-#define FOREACH_BIT_SET(val, itr, size)                 \
-    for (itr = 0; find_set_bit(val, &itr, size); itr++)
+#define FOREACH_BIT_SET(val, itr, size)     \
+    if (val != 0)                           \
+        for (itr = 0; itr < size; itr++)    \
+            if ((val >> itr) & 1)
 
 #endif // TEGRA_HOST1X_PRIV_H
