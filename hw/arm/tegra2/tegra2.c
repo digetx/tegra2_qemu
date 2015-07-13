@@ -263,11 +263,15 @@ static void tegra2_init(MachineState *machine)
     sysbus_mmio_map(SYS_BUS_DEVICE(tegra_dvc_dev), 0, TEGRA_DVC_BASE);
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_dvc_dev), 0, DIRQ(INT_DVC));
 
-    /* host1x bus/dma */
-    tegra_host1x_dev = sysbus_create_varargs("tegra.host1x", TEGRA_HOST1X_BASE,
+    /* host1x CDMA and syncpts */
+    tegra_grhost_dev = sysbus_create_varargs("tegra.grhost",
+                                             TEGRA_GRHOST_BASE,
                                              DIRQ(INT_HOST1X_MPCORE_SYNCPT),
                                              DIRQ(INT_HOST1X_MPCORE_GENERAL),
                                              NULL);
+
+    /* GPU 2d */
+    tegra_gr2d_dev = sysbus_create_simple("tegra.gr2d", TEGRA_GR2D_BASE, NULL);
 
     /* Display1 controller */
     tegra_dc1_dev = sysbus_create_simple("tegra.dc", TEGRA_DISPLAY_BASE,

@@ -21,45 +21,34 @@
 
 #include "devices.h"
 #include "iomap.h"
-#include "tegra_trace.h"
 
-#include "modules/gr2d/gr2d.h"
-#include "modules/host1x/host1x.h"
 #include "host1x_channel.h"
 #include "host1x_module.h"
-#include "host1x_syncpts.h"
 #include "host1x_priv.h"
 
-#define TYPE_TEGRA_HOST1X "tegra.host1x"
-#define TEGRA_HOST1X(obj) OBJECT_CHECK(tegra_host1x, (obj), TYPE_TEGRA_HOST1X)
+#include "tegra_trace.h"
 
-typedef struct tegra_host1x_state {
+#define TYPE_TEGRA_GRHOST "tegra.grhost"
+#define TEGRA_GRHOST(obj) OBJECT_CHECK(tegra_grhost, (obj), TYPE_TEGRA_GRHOST)
+
+typedef struct tegra_grhost_state {
     SysBusDevice parent_obj;
 
     tegra_host1x_channel channels[CHANNELS_NB];
-    tegra_gr2d gr2d;
 
     MemoryRegion container;
     qemu_irq syncpt_irq;
     qemu_irq general_irq;
+} tegra_grhost;
 
-    struct host1x_module host1x_module;
-} tegra_host1x;
-
-static void tegra_host1x_priv_initfn(Object *obj)
+static void tegra_grhost_priv_initfn(Object *obj)
 {
-    tegra_host1x *s = TEGRA_HOST1X(obj);
+    tegra_grhost *s = TEGRA_GRHOST(obj);
     int i;
 
-    memory_region_init(&s->container, obj, "host1x-container",
-                       TEGRA_HOST1X_SIZE);
+    memory_region_init(&s->container, obj, "grhost-container",
+                       TEGRA_GRHOST_SIZE);
     sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->container);
-
-    s->host1x_module.class_id = 0x1,
-    s->host1x_module.reg_write = host1x_write;
-    s->host1x_module.reg_read = host1x_read;
-
-    register_host1x_bus_module(&s->host1x_module, NULL);
 
     for (i = 0; i < CHANNELS_NB; i++) {
         object_initialize(&s->channels[i], sizeof(s->channels[i]),
@@ -68,12 +57,9 @@ static void tegra_host1x_priv_initfn(Object *obj)
 
         host1x_init_cdma(&s->channels[i].cdma, i);
     }
-
-    object_initialize(&s->gr2d, sizeof(s->gr2d), "tegra.gr2d");
-    qdev_set_parent_bus(DEVICE(&s->gr2d), sysbus_get_default());
 }
 
-static void tegra_host1x_realize_subdev(MemoryRegion *container, void *state,
+static void tegra_grhost_realize_subdev(MemoryRegion *container, void *state,
                                         hwaddr offset)
 {
     SysBusDevice *busdev = SYS_BUS_DEVICE(state);
@@ -84,9 +70,9 @@ static void tegra_host1x_realize_subdev(MemoryRegion *container, void *state,
                                 sysbus_mmio_get_region(busdev, 0));
 }
 
-static void tegra_host1x_priv_realize(DeviceState *dev, Error **errp)
+static void tegra_grhost_priv_realize(DeviceState *dev, Error **errp)
 {
-    tegra_host1x *s = TEGRA_HOST1X(dev);
+    tegra_grhost *s = TEGRA_GRHOST(dev);
     int i;
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->syncpt_irq);
@@ -97,29 +83,27 @@ static void tegra_host1x_priv_realize(DeviceState *dev, Error **errp)
     host1x_init_dma();
 
     for (i = 0; i < CHANNELS_NB; i++)
-        tegra_host1x_realize_subdev(&s->container, &s->channels[i], i * SZ_16K);
-
-    tegra_host1x_realize_subdev(&s->container, &s->gr2d, 0x40000);
+        tegra_grhost_realize_subdev(&s->container, &s->channels[i], i * SZ_16K);
 }
 
-static void tegra_host1x_class_init(ObjectClass *klass, void *data)
+static void tegra_grhost_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    dc->realize = tegra_host1x_priv_realize;
+    dc->realize = tegra_grhost_priv_realize;
 }
 
-static const TypeInfo tegra_host1x_info = {
-    .name = TYPE_TEGRA_HOST1X,
+static const TypeInfo tegra_grhost_info = {
+    .name = TYPE_TEGRA_GRHOST,
     .parent = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(tegra_host1x),
-    .instance_init = tegra_host1x_priv_initfn,
-    .class_init = tegra_host1x_class_init,
+    .instance_size = sizeof(tegra_grhost),
+    .instance_init = tegra_grhost_priv_initfn,
+    .class_init = tegra_grhost_class_init,
 };
 
-static void tegra_host1x_register_types(void)
+static void tegra_grhost_register_types(void)
 {
-    type_register_static(&tegra_host1x_info);
+    type_register_static(&tegra_grhost_info);
 }
 
-type_init(tegra_host1x_register_types)
+type_init(tegra_grhost_register_types)

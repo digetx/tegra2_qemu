@@ -50,12 +50,13 @@ extern void * tegra_idc1_dev;
 extern void * tegra_idc2_dev;
 extern void * tegra_idc3_dev;
 extern void * tegra_dvc_dev;
-extern void * tegra_host1x_dev;
+extern void * tegra_grhost_dev;
 extern void * tegra_arb_sema_dev;
 extern void * tegra_arb_gnt_ictlr_dev;
 extern void * tegra_irq_dispatcher_dev;
 extern void * tegra_evp_dev;
 extern void * tegra_ictlr_dev;
+extern void * tegra_gr2d_dev;
 
 void tegra_a9mpcore_reset(void);
 void tegra_device_reset(void *dev_);

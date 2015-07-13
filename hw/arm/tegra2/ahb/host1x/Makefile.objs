@@ -7,7 +7,7 @@ obj-y += core/irqs.o
 obj-y += core/module.o
 obj-y += core/syncpts.o
 
-obj-y += host1x-bus.o
+obj-y += grhost.o
 obj-y += host1x_channel.o
 
 obj-y += modules/dc/dc.o
