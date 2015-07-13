@@ -15,4 +15,5 @@ obj-y += modules/gr2d/gr2d.o
 obj-y += modules/gr2d/gr2d_module.o
 obj-y += modules/gr2d/engine.o
 obj-y += modules/gr3d/gr3d_module.o
+obj-y += modules/host1x/host1x.o
 obj-y += modules/host1x/host1x_module.o

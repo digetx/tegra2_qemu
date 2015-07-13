@@ -270,6 +270,10 @@ static void tegra2_init(MachineState *machine)
                                              DIRQ(INT_HOST1X_MPCORE_GENERAL),
                                              NULL);
 
+    /* Host1x */
+    tegra_host1x_dev = sysbus_create_simple("tegra.host1x", TEGRA_HOST1X_BASE,
+                                            NULL);
+
     /* GPU 2d */
     tegra_gr2d_dev = sysbus_create_simple("tegra.gr2d", TEGRA_GR2D_BASE, NULL);
 
