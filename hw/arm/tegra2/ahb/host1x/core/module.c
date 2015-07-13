@@ -179,6 +179,8 @@ uint32_t host1x_module_read(struct host1x_module* module, hwaddr offset)
 {
     uint32_t ret;
 
+    g_assert(module != NULL);
+
     ret = module->reg_read(module, offset);
 
     return ret;
@@ -187,8 +189,7 @@ uint32_t host1x_module_read(struct host1x_module* module, hwaddr offset)
 void host1x_module_write(struct host1x_module* module,
                          hwaddr offset, uint32_t value)
 {
-    if (module == NULL)
-        return;
+    g_assert(module != NULL);
 
 //     TPRINT("%s+: class_id=0x%02X\n", __func__, module->class_id);
 

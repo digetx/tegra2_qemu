@@ -18,6 +18,7 @@
  */
 
 #include "host1x_cdma.h"
+#include "host1x_channel.h"
 #include "host1x_module.h"
 #include "host1x.h"
 
@@ -26,6 +27,7 @@
 void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
 {
     struct host1x_syncpt_waiter *waiter = &host1x_cdma_ptr->waiter;
+    struct host1x_regs *regs = module->opaque;
 
     TRACE_WRITE(module->class_id, offset, data, data);
 
@@ -105,28 +107,95 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
     }
     case NV_CLASS_HOST_INDCTRL_OFFSET:
     {
-//         nv_class_host_indctrl method = { .reg32 = data };
-
-        g_assert_not_reached();
+        regs->indctrl.reg32 = data;
         break;
     }
     case NV_CLASS_HOST_INDOFF2_OFFSET:
     {
-//         nv_class_host_indoff2 method = { .reg32 = data };
+        nv_class_host_indoff2_reg method = { .reg32 = data };
 
-//         g_assert_not_reached();
+        if (regs->indctrl.acctype == REG) {
+            regs->indoffset = method.indroffset;
+            regs->class_id = decode_class_id(method.indmodid);
+        } else {
+            regs->indoffset = method.indfboffset;
+        }
         break;
     }
     case NV_CLASS_HOST_INDOFF_OFFSET:
     {
-//         nv_class_host_indoff method = { .reg32 = data };
+        nv_class_host_indoff_reg method = { .reg32 = data };
+        regs->indctrl.reg32 = data;
 
-//         g_assert_not_reached();
+        if (regs->indctrl.acctype == REG) {
+            regs->indoffset = method.indroffset;
+            regs->class_id = decode_class_id(method.indmodid);
+        } else {
+            regs->indoffset = method.indfboffset;
+        }
         break;
     }
     case NV_CLASS_HOST_INDDATA_OFFSET_BEGIN ... NV_CLASS_HOST_INDDATA_OFFSET_END:
     {
-        g_assert_not_reached();
+        if (regs->indctrl.rwn == WRITE) {
+            if (regs->indctrl.acctype == REG) {
+                /* Indirect host1x module reg write */
+                struct host1x_module *module = get_host1x_module(regs->class_id);
+
+                host1x_module_write(module, regs->indoffset, data);
+            } else {
+                /* Indirect memory write */
+                uint32_t *mem = host1x_dma_ptr;
+                uint32_t wrmask = 0;
+
+                if (!regs->indctrl.indbe1 & !regs->indctrl.indbe2 &
+                        !regs->indctrl.indbe3 & !regs->indctrl.indbe4)
+                    break;
+
+                if (regs->indctrl.indbe1)
+                    wrmask |= 0x000000ff;
+
+                if (regs->indctrl.indbe2)
+                    wrmask |= 0x0000ff00;
+
+                if (regs->indctrl.indbe3)
+                    wrmask |= 0x00ff0000;
+
+                if (regs->indctrl.indbe4)
+                    wrmask |= 0xff000000;
+
+                mem[regs->indoffset] &= ~wrmask;
+                mem[regs->indoffset] |= (data & wrmask);
+            }
+
+            if (regs->indctrl.autoinc) {
+                regs->indoffset++;
+                regs->indoffset &= 0x3fffffff;
+            }
+        } else {
+            tegra_host1x_channel *channel =
+                    container_of(host1x_cdma_ptr, tegra_host1x_channel, cdma);
+            uint32_t ret;
+
+            if (regs->indctrl.acctype == REG) {
+                /* Indirect host1x module reg read */
+                struct host1x_module *module = get_host1x_module(regs->class_id);
+
+                ret = host1x_module_read(module, regs->indoffset);
+            } else {
+                /* Indirect memory read */
+                uint32_t *mem = host1x_dma_ptr;
+
+                ret = mem[regs->indoffset];
+            }
+
+            fifo_push(&channel->fifo, ret);
+
+            if (regs->indctrl.autoinc) {
+                regs->indoffset++;
+                regs->indoffset &= 0x3fffffff;
+            }
+        }
         break;
     }
     default:
@@ -137,5 +206,21 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
 
 uint32_t host1x_read(struct host1x_module *module, uint32_t offset)
 {
-    return 0;
+    struct host1x_regs *regs = module->opaque;
+    uint32_t ret = 0;
+
+    switch (offset) {
+    case NV_CLASS_HOST_INDCTRL_OFFSET:
+    {
+        ret = regs->indctrl.reg32;
+        break;
+    }
+    default:
+        g_assert_not_reached();
+        break;
+    }
+
+    TRACE_READ(module->class_id, offset, ret);
+
+    return ret;
 }

@@ -22,6 +22,60 @@
 #ifndef NV_CLASS_HOST_H
 #define NV_CLASS_HOST_H
 
+#define UPDATE      0
+#define NO_UPDATE   1
+
+#define REG 0
+#define FB  1
+
+#define WRITE   0
+#define READ    1
+
+#define HOST1X      0
+#define MPE         1
+#define VI          2
+#define EPP         3
+#define ISP         4
+#define GR2D        5
+#define GR3D        6
+#define DISPLAY     8
+#define DISPLAYB    9
+#define HDMI        10
+#define TVO         11
+#define DSI         12
+
+static inline uint8_t decode_class_id(uint8_t module_id)
+{
+    switch (module_id) {
+        case HOST1X:
+            return 0x01;
+        case MPE:
+            return 0x20;
+        case VI:
+            return 0x30;
+        case EPP:
+            return 0x31;
+        case ISP:
+            return 0x32;
+        case GR2D:
+            return 0x51;
+        case GR3D:
+            return 0x60;
+        case DISPLAY:
+            return 0x70;
+        case DISPLAYB:
+            return 0x71;
+        case HDMI:
+            return 0x77;
+        case TVO:
+            return 0x78;
+        case DSI:
+            return 0x79;
+        default:
+            g_assert_not_reached();
+    }
+}
+
 #define NV_CLASS_HOST_INCR_SYNCPT_OFFSET 0x0
 #define NV_CLASS_HOST_INCR_SYNCPT_RESET  0x00000000
 typedef union nv_class_host_incr_syncpt_u {
@@ -164,7 +218,10 @@ typedef union nv_class_host_indctrl_u {
         unsigned int undefined_bits_2_25:24;
         unsigned int spool:1;               /* Route return data to spool FIFO, only applicable to reads 0 = DISABLE 1 = ENABLE */
         unsigned int autoinc:1;             /* Auto increment of read/write address 0 = DISABLE 1 = ENABLE */
-        unsigned int indbe:4;               /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
+        unsigned int indbe1:1;              /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
+        unsigned int indbe2:1;
+        unsigned int indbe3:1;
+        unsigned int indbe4:1;
     };
 
     uint32_t reg32;
@@ -180,17 +237,13 @@ typedef union nv_class_host_indoff2_reg_u {
         unsigned int undefined_bits_26_31:6;
     };
 
-    uint32_t reg32;
-} nv_class_host_indoff2_reg;
-
-typedef union nv_class_host_indoff2_fb_u {
     struct {
-        unsigned int undefined_bits_0_1:2;
-        unsigned int indoffset:30;          /* ACCTYPE=FB: framebuffer address */
+        unsigned int undefined_bits_0_1x:2;
+        unsigned int indfboffset:30;        /* ACCTYPE=FB: framebuffer address */
     };
 
     uint32_t reg32;
-} nv_class_host_indoff2_fb;
+} nv_class_host_indoff2_reg;
 
 #define NV_CLASS_HOST_INDOFF_OFFSET 0x2D
 #define NV_CLASS_HOST_INDOFF_RESET  0x00000000
@@ -205,24 +258,28 @@ typedef union nv_class_host_indoff_reg_u {
         unsigned int indbe:4;               /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
     };
 
-    uint32_t reg32;
-} nv_class_host_indoff_reg;
-
-typedef union nv_class_host_indoff_fb_u {
     struct {
-        unsigned int rwn:1;                 /* Read/write 0 = WRITE 1 = READ */
-        unsigned int acctype:1;             /* Access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
-        unsigned int indoffset:24;          /* ACCTYPE=FB: framebuffer address */
-        unsigned int spool:1;               /* Route return data to spool FIFO, only applicable to reads 0 = DISABLE 1 = ENABLE */
-        unsigned int autoinc:1;             /* Auto increment of read/write address 0 = DISABLE 1 = ENABLE */
-        unsigned int indbe:4;               /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
+        unsigned int rwnx:1;                /* Read/write 0 = WRITE 1 = READ */
+        unsigned int acctypex:1;            /* Access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
+        unsigned int indfboffset:24;        /* ACCTYPE=FB: framebuffer address */
+        unsigned int spoolx:1;              /* Route return data to spool FIFO, only applicable to reads 0 = DISABLE 1 = ENABLE */
+        unsigned int autoincx:1;            /* Auto increment of read/write address 0 = DISABLE 1 = ENABLE */
+        unsigned int indbex:4;              /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
     };
 
     uint32_t reg32;
-} nv_class_host_indoff_fb;
+} nv_class_host_indoff_reg;
 
 #define NV_CLASS_HOST_INDDATA_OFFSET_BEGIN 0x2E
 #define NV_CLASS_HOST_INDDATA_OFFSET_END   0x4C
+
+struct host1x_regs {
+    nv_class_host_indctrl indctrl;
+    uint32_t indoffset;
+    uint8_t class_id;
+};
+
+struct host1x_module;
 
 void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data);
 uint32_t host1x_read(struct host1x_module *module, uint32_t offset);

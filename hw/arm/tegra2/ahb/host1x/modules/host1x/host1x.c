@@ -34,8 +34,21 @@ typedef struct tegra_host1x_state {
     SysBusDevice parent_obj;
 
     MemoryRegion iomem;
+    struct host1x_regs regs;
     struct host1x_module host1x_module;
 } tegra_host1x;
+
+static const VMStateDescription vmstate_tegra_host1x = {
+    .name = "tegra-host1x",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (VMStateField[]) {
+        VMSTATE_UINT32(regs.indctrl.reg32, tegra_host1x),
+        VMSTATE_UINT32(regs.indoffset, tegra_host1x),
+        VMSTATE_UINT8(regs.class_id, tegra_host1x),
+        VMSTATE_END_OF_LIST()
+    }
+};
 
 static uint64_t tegra_host1x_priv_read(void *opaque, hwaddr offset, unsigned size)
 {
@@ -72,7 +85,7 @@ static int tegra_host1x_priv_init(SysBusDevice *dev)
     s->host1x_module.reg_write = host1x_write;
     s->host1x_module.reg_read = host1x_read;
 
-    register_host1x_bus_module(&s->host1x_module, NULL);
+    register_host1x_bus_module(&s->host1x_module, &s->regs);
 
     return 0;
 }
@@ -80,8 +93,10 @@ static int tegra_host1x_priv_init(SysBusDevice *dev)
 static void tegra_host1x_class_init(ObjectClass *klass, void *data)
 {
     SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+    DeviceClass *dc = DEVICE_CLASS(klass);
 
     k->init = tegra_host1x_priv_init;
+    dc->vmsd = &vmstate_tegra_host1x;
 }
 
 static const TypeInfo tegra_host1x_info = {

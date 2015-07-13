@@ -3,6 +3,7 @@ QEMU_CFLAGS += -I$(SRC_PATH)/hw/display
 
 obj-y += core/cdma.o
 obj-y += core/cmd_processor.o
+obj-y += core/fifo.o
 obj-y += core/irqs.o
 obj-y += core/module.o
 obj-y += core/syncpts.o

@@ -17,10 +17,13 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hw/sysbus.h"
+#include "qemu-common.h"
 
-#include "host1x_syncpts.h"
+#include "modules/host1x/host1x.h"
+
 #include "host1x_channel.h"
+#include "host1x_module.h"
+#include "host1x_syncpts.h"
 
 #include "iomap.h"
 #include "tegra_trace.h"
@@ -38,7 +41,6 @@ static const VMStateDescription vmstate_tegra_host1x_channel = {
         VMSTATE_UINT32(fifostat.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(indoff.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(indcnt.reg32, tegra_host1x_channel),
-        VMSTATE_UINT32(inddata.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(dmastart.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(dmaput.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(dmaend.reg32, tegra_host1x_channel),
@@ -50,9 +52,33 @@ static const VMStateDescription vmstate_tegra_host1x_channel = {
         VMSTATE_UINT32(raise.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(fbbufbase.reg32, tegra_host1x_channel),
         VMSTATE_UINT32(cmdswap.reg32, tegra_host1x_channel),
+        VMSTATE_UINT32(indoffset, tegra_host1x_channel),
+        VMSTATE_UINT8(class_id, tegra_host1x_channel),
         VMSTATE_END_OF_LIST()
     }
 };
+
+static uint32_t ind_swap(uint32_t value, int type)
+{
+    uint32_t ret;
+
+    switch (type) {
+        case 1:
+            ret = (bswap16(value >> 16) << 16) | bswap16(value & 0xffff);
+            break;
+        case 2:
+            ret = bswap32(value);
+            break;
+        case 3:
+            ret = ror32(value, 16);
+            break;
+        default:
+            ret = value;
+            break;
+    }
+
+    return ret;
+}
 
 static uint64_t tegra_host1x_channel_priv_read(void *opaque, hwaddr offset,
                                                unsigned size)
@@ -64,6 +90,7 @@ static uint64_t tegra_host1x_channel_priv_read(void *opaque, hwaddr offset,
 
     switch (offset) {
     case FIFOSTAT_OFFSET:
+        s->fifostat.outfentries = get_fifo_entries_nb(&s->fifo);
         ret = s->fifostat.reg32;
         break;
     case INDOFF_OFFSET:
@@ -73,7 +100,7 @@ static uint64_t tegra_host1x_channel_priv_read(void *opaque, hwaddr offset,
         ret = s->indcnt.reg32;
         break;
     case INDDATA_OFFSET:
-        ret = s->inddata.reg32;
+        ret = fifo_pop(&s->fifo);
         break;
     case DMASTART_OFFSET:
         ret = s->dmastart.reg32;
@@ -133,6 +160,15 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
     case INDOFF_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->indoff.reg32, value);
         s->indoff.reg32 = value;
+
+        if (s->indoff.indoffupd == UPDATE) {
+            if (s->indoff.acctype == REG) {
+                s->indoffset = s->indoff.regoffset;
+                s->class_id = decode_class_id(s->indoff.modid);
+            } else {
+                s->indoffset = s->indoff.fboffset;
+            }
+        }
         break;
     case INDCNT_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->indcnt.reg32, value);
@@ -142,9 +178,23 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
         break;
     case INDDATA_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->inddata.reg32, value);
-        s->inddata.reg32 = value;
 
-        g_assert_not_reached();
+        if (s->indoff.acctype == REG) {
+            /* Indirect host1x module reg write */
+            struct host1x_module *module = get_host1x_module(s->class_id);
+
+            host1x_module_write(module, s->indoffset, value);
+        } else {
+            /* Indirect memory write */
+            uint32_t *mem = host1x_dma_ptr;
+
+            mem[s->indoffset] = ind_swap(value, s->indoff.indswap);
+        }
+
+        if (s->indoff.autoinc) {
+            s->indoffset++;
+            s->indoffset &= 0x3fffffff;
+        }
         break;
     case DMASTART_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->dmastart.reg32, value);
@@ -174,6 +224,13 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
     case INDOFF2_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->indoff2.reg32, value);
         s->indoff2.reg32 = value;
+
+        if (s->indoff.acctype == REG) {
+            s->indoffset = s->indoff2.regoffset;
+            s->class_id = decode_class_id(s->indoff2.modid);
+        } else {
+            s->indoffset = s->indoff2.fboffset;
+        }
         break;
     case TICKCOUNT_HI_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->tickcount_hi.reg32, value);
@@ -217,7 +274,6 @@ static void tegra_host1x_channel_priv_reset(DeviceState *dev)
     s->fifostat.reg32 = FIFOSTAT_RESET;
     s->indoff.reg32 = INDOFF_RESET;
     s->indcnt.reg32 = INDCNT_RESET;
-    s->inddata.reg32 = INDDATA_RESET;
     s->dmastart.reg32 = DMASTART_RESET;
     s->dmaput.reg32 = DMAPUT_RESET;
     s->dmaend.reg32 = DMAEND_RESET;
@@ -249,6 +305,8 @@ static void tegra_host1x_channel_realize(DeviceState *dev, Error **errp)
     memory_region_init_io(&s->iomem, OBJECT(s), &tegra_host1x_channel_mem_ops,
                           s, "tegra.host1x_channel", SZ_16K);
     sysbus_init_mmio(sbd, &s->iomem);
+
+    fifo_init(&s->fifo);
 }
 
 static Property tegra_host1x_channel_properties[] = {

@@ -22,6 +22,9 @@
 #ifndef TEGRA_HOST1X_CHANNELS_H
 #define TEGRA_HOST1X_CHANNELS_H
 
+#include "hw/sysbus.h"
+
+#include "fifo.h"
 #include "host1x_cdma.h"
 
 #undef DEFINE_REG32
@@ -58,6 +61,19 @@ typedef union indoff_u {
         unsigned int buf32b:1;              /* buffer up 32 bits of register data before sending it. Otherwise, register writes will be sent as soon as they are received. Does not support byte writes in 16-bit host. Does not affect framebuffer writes. 0 = NOBUF 1 = BUF */
         unsigned int acctype:1;             /* access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
         unsigned int autoinc:1;             /* auto increment of read/write address 0 = DISABLE 1 = ENABLE */
+    };
+
+    struct {
+        unsigned int stub_bitsx:2;
+        unsigned int regoffset:16;
+        unsigned int modid:8;
+        unsigned int restx:8;
+    };
+
+    struct {
+        unsigned int stub_bits:2;
+        unsigned int fboffset:24;
+        unsigned int rest:8;
     };
 
     uint32_t reg32;
@@ -145,8 +161,15 @@ typedef union dmactrl_u {
 #define INDOFF2_RESET  0x00000000
 typedef union indoff2_u {
     struct {
+        unsigned int undefined_bitsx_0_1:2;
+        unsigned int regoffset:16;
+        unsigned int modid:8;
+        unsigned int rest:8;
+    };
+
+    struct {
         unsigned int undefined_bits_0_1:2;
-        unsigned int custom:30;
+        unsigned int fboffset:30;
     };
 
     uint32_t reg32;
@@ -219,7 +242,7 @@ typedef struct tegra_host1x_channel_state {
     SysBusDevice parent_obj;
 
     struct host1x_cdma cdma;
-    struct host1x_module *host1x_module;
+    struct host1x_fifo fifo;
 
     MemoryRegion iomem;
     DEFINE_REG32(fifostat);
@@ -237,6 +260,8 @@ typedef struct tegra_host1x_channel_state {
     DEFINE_REG32(raise);
     DEFINE_REG32(fbbufbase);
     DEFINE_REG32(cmdswap);
+    uint32_t indoffset;
+    uint8_t class_id;
 } tegra_host1x_channel;
 
 #endif // TEGRA_HOST1X_CHANNELS_H
