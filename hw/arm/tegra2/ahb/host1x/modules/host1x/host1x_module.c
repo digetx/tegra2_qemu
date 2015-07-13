@@ -150,7 +150,7 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
 
                 if (!regs->indctrl.indbe1 & !regs->indctrl.indbe2 &
                         !regs->indctrl.indbe3 & !regs->indctrl.indbe4)
-                    break;
+                    goto inddata_out;
 
                 if (regs->indctrl.indbe1)
                     wrmask |= 0x000000ff;
@@ -166,11 +166,6 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
 
                 mem[regs->indoffset] &= ~wrmask;
                 mem[regs->indoffset] |= (data & wrmask);
-            }
-
-            if (regs->indctrl.autoinc) {
-                regs->indoffset++;
-                regs->indoffset &= 0x3fffffff;
             }
         } else {
             tegra_host1x_channel *channel =
@@ -190,11 +185,12 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
             }
 
             fifo_push(&channel->fifo, ret);
+        }
 
-            if (regs->indctrl.autoinc) {
-                regs->indoffset++;
-                regs->indoffset &= 0x3fffffff;
-            }
+inddata_out:
+        if (regs->indctrl.autoinc) {
+            regs->indoffset++;
+            regs->indoffset &= 0x3fffffff;
         }
         break;
     }
