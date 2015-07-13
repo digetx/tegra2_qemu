@@ -179,11 +179,21 @@ static void tegra_cpu_unpowergateAVP(void)
     tegra_AVP_powergated = 0;
 }
 
+static void tegra_cpu_powergate_sanity_check(void)
+{
+    CPUState *cs = qemu_get_cpu(TEGRA2_A9_CORE1);
+    ARMCPU *cpu = ARM_CPU(cs);
+
+    /* Core 1 should be stopped before CPU powergate.  */
+    g_assert(cs->halted || cpu->powered_off);
+}
+
 void tegra_cpu_powergate(int cpu_id)
 {
     switch (cpu_id) {
     case TEGRA2_A9_CORE0:
     case TEGRA2_A9_CORE1:
+        tegra_cpu_powergate_sanity_check();
         tegra_cpu_powergateA9();
         break;
     case TEGRA2_COP:
