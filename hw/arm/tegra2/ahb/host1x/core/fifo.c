@@ -38,8 +38,12 @@ void * host1x_fifo_create(unsigned int fifo_size)
 {
     struct host1x_fifo *fifo = calloc(1, sizeof(struct host1x_fifo));
 
-    fifo->data = malloc(fifo_size * sizeof(unsigned int));
+    assert(fifo != NULL);
+
     fifo->size = fifo_size - 1;
+    fifo->data = malloc(fifo_size * sizeof(unsigned int));
+
+    assert(fifo->data != NULL);
 
     qemu_mutex_init(&fifo->mutex);
     qemu_cond_init(&fifo->free_cond);
