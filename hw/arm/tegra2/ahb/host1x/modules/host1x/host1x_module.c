@@ -19,6 +19,7 @@
 
 #include "host1x_cdma.h"
 #include "host1x_channel.h"
+#include "host1x_fifo.h"
 #include "host1x_module.h"
 #include "host1x.h"
 
@@ -184,7 +185,7 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
                 ret = mem[regs->indoffset];
             }
 
-            fifo_push(&channel->fifo, ret);
+            host1x_fifo_push(channel->fifo, ret);
         }
 
 inddata_out:

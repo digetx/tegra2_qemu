@@ -22,6 +22,7 @@
 #include "modules/host1x/host1x.h"
 
 #include "host1x_channel.h"
+#include "host1x_fifo.h"
 #include "host1x_module.h"
 #include "host1x_syncpts.h"
 
@@ -90,7 +91,7 @@ static uint64_t tegra_host1x_channel_priv_read(void *opaque, hwaddr offset,
 
     switch (offset) {
     case FIFOSTAT_OFFSET:
-        s->fifostat.outfentries = get_fifo_entries_nb(&s->fifo);
+        s->fifostat.outfentries = host1x_get_fifo_entries_nb(s->fifo);
         ret = s->fifostat.reg32;
         break;
     case INDOFF_OFFSET:
@@ -100,7 +101,7 @@ static uint64_t tegra_host1x_channel_priv_read(void *opaque, hwaddr offset,
         ret = s->indcnt.reg32;
         break;
     case INDDATA_OFFSET:
-        ret = fifo_pop(&s->fifo);
+        ret = host1x_fifo_pop(s->fifo);
         break;
     case DMASTART_OFFSET:
         ret = s->dmastart.reg32;
@@ -289,6 +290,8 @@ static void tegra_host1x_channel_priv_reset(DeviceState *dev)
     host1x_cdma_set_base(&s->cdma, s->dmastart.dmastart);
     host1x_cdma_set_put(&s->cdma, s->dmaput.dmaput);
     host1x_cdma_set_end(&s->cdma, s->dmaend.dmaend);
+
+    host1x_fifo_reset(s->fifo);
 }
 
 static const MemoryRegionOps tegra_host1x_channel_mem_ops = {
@@ -306,7 +309,7 @@ static void tegra_host1x_channel_realize(DeviceState *dev, Error **errp)
                           s, "tegra.host1x_channel", SZ_16K);
     sysbus_init_mmio(sbd, &s->iomem);
 
-    fifo_init(&s->fifo);
+    s->fifo = host1x_fifo_create(32);
 }
 
 static Property tegra_host1x_channel_properties[] = {

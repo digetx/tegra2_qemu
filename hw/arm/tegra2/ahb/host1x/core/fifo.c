@@ -18,39 +18,57 @@
  */
 
 #include <assert.h>
+#include <stdlib.h>
 
 #include "qemu/thread.h"
 
-#include "fifo.h"
+#include "host1x_fifo.h"
 
-void fifo_init(struct host1x_fifo *fifo)
+struct host1x_fifo {
+    uint32_t *data;
+    unsigned int size;
+    unsigned int entries_nb;
+    unsigned int first;
+    unsigned int last;
+    QemuMutex mutex;
+    QemuCond free_cond;
+};
+
+void * host1x_fifo_create(unsigned int fifo_size)
 {
-    fifo->entries_nb = 0;
-    fifo->first = 0;
-    fifo->last = 0;
+    struct host1x_fifo *fifo = calloc(1, sizeof(struct host1x_fifo));
+
+    fifo->data = malloc(fifo_size * sizeof(unsigned int));
+    fifo->size = fifo_size - 1;
+
     qemu_mutex_init(&fifo->mutex);
     qemu_cond_init(&fifo->free_cond);
+
+    return fifo;
 }
 
-uint8_t get_fifo_entries_nb(struct host1x_fifo *fifo)
+unsigned int host1x_get_fifo_entries_nb(struct host1x_fifo *fifo)
 {
     return fifo->entries_nb;
 }
 
-void fifo_push(struct host1x_fifo *fifo, uint32_t data)
+void host1x_fifo_push(struct host1x_fifo *fifo, uint32_t data)
 {
     qemu_mutex_lock(&fifo->mutex);
 
-    if (fifo->entries_nb == (FIFO_SIZE - 1))
+    while (fifo->entries_nb == fifo->size)
         qemu_cond_wait(&fifo->free_cond, &fifo->mutex);
 
     fifo->data[fifo->last++] = data;
     fifo->entries_nb++;
 
+    if (fifo->last > fifo->size)
+        fifo->last = 0;
+
     qemu_mutex_unlock(&fifo->mutex);
 }
 
-uint32_t fifo_pop(struct host1x_fifo *fifo)
+uint32_t host1x_fifo_pop(struct host1x_fifo *fifo)
 {
     uint32_t ret;
 
@@ -61,9 +79,23 @@ uint32_t fifo_pop(struct host1x_fifo *fifo)
     ret = fifo->data[fifo->first++];
     fifo->entries_nb--;
 
-    qemu_cond_signal(&fifo->free_cond);
+    if (fifo->first > fifo->size)
+        fifo->first = 0;
 
     qemu_mutex_unlock(&fifo->mutex);
 
+    qemu_cond_signal(&fifo->free_cond);
+
     return ret;
+}
+
+void host1x_fifo_reset(struct host1x_fifo *fifo)
+{
+    assert(qemu_mutex_trylock(&fifo->mutex) == 0);
+
+    fifo->entries_nb = 0;
+    fifo->first = 0;
+    fifo->last = 0;
+
+    qemu_mutex_unlock(&fifo->mutex);
 }

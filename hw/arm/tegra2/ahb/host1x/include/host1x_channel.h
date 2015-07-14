@@ -24,7 +24,6 @@
 
 #include "hw/sysbus.h"
 
-#include "fifo.h"
 #include "host1x_cdma.h"
 
 #undef DEFINE_REG32
@@ -242,7 +241,7 @@ typedef struct tegra_host1x_channel_state {
     SysBusDevice parent_obj;
 
     struct host1x_cdma cdma;
-    struct host1x_fifo fifo;
+    void *fifo;
 
     MemoryRegion iomem;
     DEFINE_REG32(fifostat);
