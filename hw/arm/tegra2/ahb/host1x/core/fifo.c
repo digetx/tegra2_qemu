@@ -41,7 +41,7 @@ void * host1x_fifo_create(unsigned int fifo_size)
     assert(fifo != NULL);
 
     fifo->size = fifo_size - 1;
-    fifo->data = malloc(fifo_size * sizeof(unsigned int));
+    fifo->data = malloc(fifo_size * sizeof(*fifo->data));
 
     assert(fifo->data != NULL);
 
