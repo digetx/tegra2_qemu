@@ -68,7 +68,7 @@ uint32_t host1x_sync_read_reg(uint32_t addr)
     uint32_t offset = addr & 0xFFF;
     uint32_t ret = 0;
 
-    switch (offset & 0xFFF) {
+    switch (offset) {
     case INTSTATUS_OFFSET:
         ret = host1x_get_sync_irq_status();
         break;
@@ -256,7 +256,7 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
     uint32_t offset = addr & 0xFFF;
     unsigned i;
 
-    switch (offset & 0xFFF) {
+    switch (offset) {
     case INTMASK_OFFSET:
         TRACE_WRITE(base, offset, host1x_get_modules_irq_mask(), value);
         host1x_set_modules_irq_mask(value);
