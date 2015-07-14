@@ -17,6 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "hw/hw.h"
 #include "hw/arm/arm.h"
 #include "sysemu/sysemu.h"
 
@@ -70,8 +71,23 @@ static void tegra_cpu_pwrgate_reset(void *opaque)
     tegra_cpu_hlt_clr();
 }
 
+static void tegra_do_cpu_reset(void *opaque)
+{
+    CPUState *cs = opaque;
+    int cpu_id = cs->cpu_index;
+
+    assert(cpu_id < TEGRA2_NCPUS);
+
+    tegra_cpu_reset_assert(cpu_id);
+}
+
 void tegra_cpu_reset_init(void)
 {
+    CPUState *cs;
+
+    CPU_FOREACH(cs)
+        qemu_register_reset(tegra_do_cpu_reset, cs);
+
     qemu_register_reset(tegra_cpu_pwrgate_reset, NULL);
 }
 

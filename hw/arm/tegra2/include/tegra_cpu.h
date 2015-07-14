@@ -17,7 +17,6 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "hw/boards.h"
 #include "qemu/notify.h"
 
 enum {
@@ -38,4 +37,4 @@ void tegra_cpu_unpowergate(int cpu_id);
 uint32_t tegra_get_wfe_bitmap(void);
 void tegra_register_wfe_notifier(Notifier *notifier);
 void tegra_unregister_wfe_notifier(Notifier *notifier);
-void tegra_boot(MachineState *machine);
+void tegra_cpu_reset_init(void);

@@ -17,7 +17,6 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-void tegra_cpu_reset_init(void);
 int tegra_cpu_reset_asserted(int cpu_id);
 void tegra_cpu_hlt_clr(void);
 void tegra_cpu_stop(int cpu_id);
