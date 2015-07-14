@@ -313,9 +313,27 @@ static QEMUMachine tegra2_alpha_machine = {
     .max_cpus = TEGRA2_NCPUS,
 };
 
+static QemuOptsList qemu_tegra_opts = {
+    .name = "tegra",
+    .merge_lists = true,
+    .head = QTAILQ_HEAD_INITIALIZER(qemu_tegra_opts.head),
+    .desc = {
+        {
+            .name = "bootloader",
+            .type = QEMU_OPT_STRING,
+        },
+        {
+            .name = "iram",
+            .type = QEMU_OPT_STRING,
+        },
+        { /* end of list */ }
+    }
+};
+
 static void tegra2_machine_init(void)
 {
     qemu_register_machine(&tegra2_alpha_machine);
+    qemu_add_opts(&qemu_tegra_opts);
 }
 
 machine_init(tegra2_machine_init);

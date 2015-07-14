@@ -17,6 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/config-file.h"
 #include "hw/arm/arm.h"
 #include "hw/cpu/a9mpcore.h"
 #include "hw/loader.h"
@@ -112,8 +113,17 @@ static void tegra_do_cpu_reset(void *opaque)
 
 void tegra_boot(MachineState *machine)
 {
+    QemuOpts *opts = qemu_find_opts_singleton("tegra");
+    const char *bootloader_path = qemu_opt_get(opts, "bootloader");
+    const char *iram_path = qemu_opt_get(opts, "iram");
+    const char *dtb_path = qemu_opt_get(qemu_get_machine_opts(), "dtb");
     CPUState *cs;
     int tmp;
+
+    if (bootloader_path == NULL) {
+        fprintf(stderr, "-bootloader not specified\n");
+        exit(1);
+    }
 
     /* TODO: load bootloader from emmc */
     tegra_bootrom[JMP_FIXUP] = BOOTLOADER_BASE;
@@ -122,12 +132,14 @@ void tegra_boot(MachineState *machine)
         tegra_bootrom[tmp] = tswap32(tegra_bootrom[tmp]);
 
     /* Load bootloader */
-    assert(load_image_targphys(machine->kernel_filename, BOOTLOADER_BASE,
+    assert(load_image_targphys(bootloader_path, BOOTLOADER_BASE,
                                machine->ram_size - BOOTLOADER_BASE) > 0);
 
-    /* Load BIT */
-    assert(load_image_targphys("/home/dima/vl/boot_iram.bin",
-                               TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE) > 0);
+    if (iram_path != NULL) {
+        /* Load BIT */
+        assert(load_image_targphys(iram_path, TEGRA_IRAM_BASE,
+                                   TEGRA_IRAM_SIZE) > 0);
+    }
 
     /* Load IROM */
     rom_add_blob_fixed("bootrom", tegra_bootrom, sizeof(tegra_bootrom),
@@ -140,12 +152,15 @@ void tegra_boot(MachineState *machine)
     rom_add_blob_fixed("bootmon", tegra_bootmon, sizeof(tegra_bootmon),
                        0xf0010000);
 
-    tmp = load_image_targphys("/run/media/dima/449ec3d0-25ad-4332-9510-c28428d843b1/android/kernel_tegra2_qemu/arch/arm/boot/zImage",
-                              0x1000000, machine->ram_size);
-    assert(tmp > 0);
+    if (machine->kernel_filename != NULL) {
+        tmp = load_image_targphys(machine->kernel_filename, 0x1000000,
+                                  machine->ram_size);
+        assert(tmp > 0);
 
-    assert(load_image_targphys("/run/media/dima/449ec3d0-25ad-4332-9510-c28428d843b1/android/kernel_tegra2_qemu/arch/arm/boot/dts/tegra20-qemu.dtb",
-                               0x1000000 + tmp, machine->ram_size) > 0);
+        if (dtb_path != NULL)
+            assert(load_image_targphys(dtb_path, 0x1000000 + tmp,
+                                       machine->ram_size) > 0);
+    }
 
     tegra_cpu_reset_init();
 
