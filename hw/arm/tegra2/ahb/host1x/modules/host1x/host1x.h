@@ -232,14 +232,14 @@ typedef union nv_class_host_indctrl_u {
 typedef union nv_class_host_indoff2_reg_u {
     struct {
         unsigned int undefined_bits_0_1:2;
-        unsigned int indroffset:16;         /* ACCTYPE=REG: register offset ([15:0]) */
-        unsigned int indmodid:8;            /* ACCTYPE=REG: register module ID 0 = HOST1X 1 = MPE 2 = VI 3 = EPP 4 = ISP 5 = GR2D 6 = GR3D 8 = DISPLAY 11 = TVO 9 = DISPLAYB 12 = DSI 10 = HDMI */
-        unsigned int undefined_bits_26_31:6;
-    };
-
-    struct {
-        unsigned int undefined_bits_0_1x:2;
-        unsigned int indfboffset:30;        /* ACCTYPE=FB: framebuffer address */
+        union {
+            struct {
+                unsigned int indroffset:16;         /* ACCTYPE=REG: register offset ([15:0]) */
+                unsigned int indmodid:8;            /* ACCTYPE=REG: register module ID 0 = HOST1X 1 = MPE 2 = VI 3 = EPP 4 = ISP 5 = GR2D 6 = GR3D 8 = DISPLAY 11 = TVO 9 = DISPLAYB 12 = DSI 10 = HDMI */
+                unsigned int undefined_bits_26_31:6;
+            };
+            unsigned int indfboffset:30;        /* ACCTYPE=FB: framebuffer address */
+        };
     };
 
     uint32_t reg32;
@@ -251,20 +251,16 @@ typedef union nv_class_host_indoff_reg_u {
     struct {
         unsigned int rwn:1;                 /* Read/write 0 = WRITE 1 = READ */
         unsigned int acctype:1;             /* Access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
-        unsigned int indroffset:16;         /* ACCTYPE=REG: register offset ([15:0]) */
-        unsigned int indmodid:8;            /* ACCTYPE=REG: register module ID 0 = HOST1X 1 = MPE 2 = VI 3 = EPP 4 = ISP 5 = GR2D 6 = GR3D 8 = DISPLAY 11 = TVO 9 = DISPLAYB 12 = DSI 10 = HDMI */
+        union {
+            struct {
+                unsigned int indroffset:16;         /* ACCTYPE=REG: register offset ([15:0]) */
+                unsigned int indmodid:8;            /* ACCTYPE=REG: register module ID 0 = HOST1X 1 = MPE 2 = VI 3 = EPP 4 = ISP 5 = GR2D 6 = GR3D 8 = DISPLAY 11 = TVO 9 = DISPLAYB 12 = DSI 10 = HDMI */
+            };
+            unsigned int indfboffset:24;        /* ACCTYPE=FB: framebuffer address */
+        };
         unsigned int spool:1;               /* Route return data to spool FIFO, only applicable to reads 0 = DISABLE 1 = ENABLE */
         unsigned int autoinc:1;             /* Auto increment of read/write address 0 = DISABLE 1 = ENABLE */
         unsigned int indbe:4;               /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
-    };
-
-    struct {
-        unsigned int rwnx:1;                /* Read/write 0 = WRITE 1 = READ */
-        unsigned int acctypex:1;            /* Access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
-        unsigned int indfboffset:24;        /* ACCTYPE=FB: framebuffer address */
-        unsigned int spoolx:1;              /* Route return data to spool FIFO, only applicable to reads 0 = DISABLE 1 = ENABLE */
-        unsigned int autoincx:1;            /* Auto increment of read/write address 0 = DISABLE 1 = ENABLE */
-        unsigned int indbex:4;              /* Byte enables. Will apply to all subsequent data transactions. Not applicable for reads */
     };
 
     uint32_t reg32;
