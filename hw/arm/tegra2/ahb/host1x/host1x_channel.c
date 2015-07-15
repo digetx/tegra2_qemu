@@ -162,12 +162,12 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(CHANNEL_BASE, offset, s->indoff.reg32, value);
         s->indoff.reg32 = value;
 
-        if (s->indoff.indoffupd == UPDATE) {
-            if (s->indoff.acctype == REG) {
-                s->indoffset = s->indoff.regoffset;
-                s->class_id = decode_class_id(s->indoff.modid);
+        if (s->indoff.reg.indoffupd == UPDATE) {
+            if (s->indoff.reg.acctype == REG) {
+                s->indoffset = s->indoff.reg.regoffset;
+                s->class_id = decode_class_id(s->indoff.reg.modid);
             } else {
-                s->indoffset = s->indoff.fboffset;
+                s->indoffset = s->indoff.fb.fboffset;
             }
         }
         break;
@@ -180,7 +180,7 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
     case INDDATA_OFFSET:
         TRACE_WRITE(CHANNEL_BASE, offset, s->inddata.reg32, value);
 
-        if (s->indoff.acctype == REG) {
+        if (s->indoff.reg.acctype == REG) {
             /* Indirect host1x module reg write */
             struct host1x_module *module = get_host1x_module(s->class_id);
 
@@ -189,10 +189,10 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
             /* Indirect memory write */
             uint32_t *mem = host1x_dma_ptr;
 
-            mem[s->indoffset] = ind_swap(value, s->indoff.indswap);
+            mem[s->indoffset] = ind_swap(value, s->indoff.reg.indswap);
         }
 
-        if (s->indoff.autoinc) {
+        if (s->indoff.reg.autoinc) {
             s->indoffset++;
             s->indoffset &= 0x3fffffff;
         }
@@ -226,11 +226,11 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(CHANNEL_BASE, offset, s->indoff2.reg32, value);
         s->indoff2.reg32 = value;
 
-        if (s->indoff.acctype == REG) {
-            s->indoffset = s->indoff2.regoffset;
-            s->class_id = decode_class_id(s->indoff2.modid);
+        if (s->indoff.reg.acctype == REG) {
+            s->indoffset = s->indoff2.reg.regoffset;
+            s->class_id = decode_class_id(s->indoff2.reg.modid);
         } else {
-            s->indoffset = s->indoff2.fboffset;
+            s->indoffset = s->indoff2.fb.fboffset;
         }
         break;
     case TICKCOUNT_HI_OFFSET:

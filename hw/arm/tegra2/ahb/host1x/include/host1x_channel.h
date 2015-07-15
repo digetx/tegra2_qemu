@@ -54,26 +54,25 @@ typedef union indoff_u {
     struct {
         unsigned int indoffupd:1;           /* Optionally disable the update of INDOFFSET when writing this register 0 = UPDATE 1 = NO_UPDATE */
         unsigned int undefined_bit_1:1;
-        unsigned int indcustom:24;
+        unsigned int regoffset:16;
+        unsigned int modid:8;
         unsigned int undefined_bit_26:1;
         unsigned int indswap:2;             /* Indirect framebuffer access swap control. 00 = No byte swap 01 = 16-bit byte swap ([31:0] -> {[23:16],[31:24],[7:0],[15:8]}) 10 = 32-bit byte swap ([31:0] -> {[7:0],[15:8],[23:16],[31:24]}) 11 = 32-bit word swap ([31:0] -> {[15:8],[7:0],[31:24],[23:16]}) 0 = NONE 1 = BYTE16 2 = BYTE32 3 = WORD32 */
         unsigned int buf32b:1;              /* buffer up 32 bits of register data before sending it. Otherwise, register writes will be sent as soon as they are received. Does not support byte writes in 16-bit host. Does not affect framebuffer writes. 0 = NOBUF 1 = BUF */
         unsigned int acctype:1;             /* access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
         unsigned int autoinc:1;             /* auto increment of read/write address 0 = DISABLE 1 = ENABLE */
-    };
+    } reg;
 
     struct {
-        unsigned int stub_bitsx:2;
-        unsigned int regoffset:16;
-        unsigned int modid:8;
-        unsigned int restx:8;
-    };
-
-    struct {
-        unsigned int stub_bits:2;
+        unsigned int indoffupd:1;           /* Optionally disable the update of INDOFFSET when writing this register 0 = UPDATE 1 = NO_UPDATE */
         unsigned int fboffset:24;
-        unsigned int rest:8;
-    };
+        unsigned int undefined_bit_26:1;
+        unsigned int indswap:2;             /* Indirect framebuffer access swap control. 00 = No byte swap 01 = 16-bit byte swap ([31:0] -> {[23:16],[31:24],[7:0],[15:8]}) 10 = 32-bit byte swap ([31:0] -> {[7:0],[15:8],[23:16],[31:24]}) 11 = 32-bit word swap ([31:0] -> {[15:8],[7:0],[31:24],[23:16]}) 0 = NONE 1 = BYTE16 2 = BYTE32 3 = WORD32 */
+        unsigned int buf32b:1;              /* buffer up 32 bits of register data before sending it. Otherwise, register writes will be sent as soon as they are received. Does not support byte writes in 16-bit host. Does not affect framebuffer writes. 0 = NOBUF 1 = BUF */
+        unsigned int acctype:1;             /* access type: indirect register or indirect framebuffer 0 = REG 1 = FB */
+        unsigned int autoinc:1;             /* auto increment of read/write address 0 = DISABLE 1 = ENABLE */
+
+    } fb;
 
     uint32_t reg32;
 } indoff_t;
@@ -163,13 +162,13 @@ typedef union indoff2_u {
         unsigned int undefined_bitsx_0_1:2;
         unsigned int regoffset:16;
         unsigned int modid:8;
-        unsigned int rest:8;
-    };
+        unsigned int rest:6;
+    } reg;
 
     struct {
         unsigned int undefined_bits_0_1:2;
         unsigned int fboffset:30;
-    };
+    } fb;
 
     uint32_t reg32;
 } indoff2_t;

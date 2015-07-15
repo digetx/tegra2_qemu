@@ -116,10 +116,10 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
         nv_class_host_indoff2_reg method = { .reg32 = data };
 
         if (regs->indctrl.acctype == REG) {
-            regs->indoffset = method.indroffset;
-            regs->class_id = decode_class_id(method.indmodid);
+            regs->indoffset = method.reg.indroffset;
+            regs->class_id = decode_class_id(method.reg.indmodid);
         } else {
-            regs->indoffset = method.indfboffset;
+            regs->indoffset = method.fb.indfboffset;
         }
         break;
     }
@@ -129,10 +129,10 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
         regs->indctrl.reg32 = data;
 
         if (regs->indctrl.acctype == REG) {
-            regs->indoffset = method.indroffset;
-            regs->class_id = decode_class_id(method.indmodid);
+            regs->indoffset = method.reg.indroffset;
+            regs->class_id = decode_class_id(method.reg.indmodid);
         } else {
-            regs->indoffset = method.indfboffset;
+            regs->indoffset = method.fb.indfboffset;
         }
         break;
     }
