@@ -138,15 +138,15 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
     }
     case NV_CLASS_HOST_INDDATA_OFFSET_BEGIN ... NV_CLASS_HOST_INDDATA_OFFSET_END:
     {
+        struct host1x_module *ind_module = get_host1x_module(regs->class_id);
+        uint32_t *mem = host1x_dma_ptr;
+
         if (regs->indctrl.rwn == WRITE) {
             if (regs->indctrl.acctype == REG) {
                 /* Indirect host1x module reg write */
-                struct host1x_module *module = get_host1x_module(regs->class_id);
-
-                host1x_module_write(module, regs->indoffset, data);
+                host1x_module_write(ind_module, regs->indoffset, data);
             } else {
                 /* Indirect memory write */
-                uint32_t *mem = host1x_dma_ptr;
                 uint32_t wrmask = 0;
 
                 if (!regs->indctrl.indbe1 & !regs->indctrl.indbe2 &
@@ -175,13 +175,9 @@ void host1x_write(struct host1x_module *module, uint32_t offset, uint32_t data)
 
             if (regs->indctrl.acctype == REG) {
                 /* Indirect host1x module reg read */
-                struct host1x_module *module = get_host1x_module(regs->class_id);
-
-                ret = host1x_module_read(module, regs->indoffset);
+                ret = host1x_module_read(ind_module, regs->indoffset);
             } else {
                 /* Indirect memory read */
-                uint32_t *mem = host1x_dma_ptr;
-
                 ret = mem[regs->indoffset];
             }
 
