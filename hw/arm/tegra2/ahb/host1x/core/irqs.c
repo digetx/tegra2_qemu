@@ -231,15 +231,15 @@ void host1x_set_syncpt_irq(uint8_t syncpt_id)
 
     qemu_mutex_lock(&irq_mutex);
 
-    host1x_syncpts_cpu_irq_status |= syncpt_id_irq_mask;
-
-    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2)))
+    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2))) {
+        host1x_syncpts_cpu_irq_status |= syncpt_id_irq_mask;
         host1x_set_irq_status_bit(30, CPU, 1);
+    }
 
-    host1x_syncpts_cop_irq_status |= syncpt_id_irq_mask;
-
-    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2 + 1)))
+    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2 + 1))) {
+        host1x_syncpts_cop_irq_status |= syncpt_id_irq_mask;
         host1x_set_irq_status_bit(31, COP, 1);
+    }
 
     qemu_mutex_unlock(&irq_mutex);
 }
