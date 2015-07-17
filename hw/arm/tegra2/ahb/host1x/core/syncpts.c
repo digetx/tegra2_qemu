@@ -376,13 +376,19 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
         host1x_set_syncpt_count((offset & 0xff) >> 2, value);
         break;
     case SYNCPT_INT_THRESH_OFFSET ... SYNCPT_INT_THRESH_31_OFFSET:
+    {
+        syncpt_int_thresh_t thresh = { .reg32 = value };
         TRACE_WRITE(base, offset, 0, value);
-        host1x_set_syncpt_threshold((offset & 0xff) >> 2, value);
+        host1x_set_syncpt_threshold((offset & 0xff) >> 2, thresh.int_thresh);
         break;
+    }
     case SYNCPT_BASE_OFFSET ... SYNCPT_BASE_7_OFFSET:
+    {
+        syncpt_base_t syncpt_base = { .reg32 = value };
         TRACE_WRITE(base, offset, 0, value);
-        host1x_set_syncpt_base((offset & 0xf) >> 2, value);
+        host1x_set_syncpt_base((offset & 0xf) >> 2, syncpt_base.base_0);
         break;
+    }
     case SYNCPT_CPU_INCR_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
 
