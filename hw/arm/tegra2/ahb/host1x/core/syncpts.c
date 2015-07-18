@@ -457,7 +457,7 @@ static void host1x_update_threshold_waiters(uint8_t syncpt_id,
 {
     struct host1x_syncpt_waiter *waiter, *waiter_next;
 
-    if (SYNCPT_TMASK(syncpt->counter) >= syncpt->threshold)
+    if (syncpt->counter >= syncpt->threshold)
         host1x_set_syncpt_irq(syncpt_id);
 
     QLIST_FOREACH_SAFE(waiter, &syncpt->waiters, next, waiter_next) {
