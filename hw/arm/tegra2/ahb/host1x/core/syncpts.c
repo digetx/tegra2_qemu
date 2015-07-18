@@ -452,16 +452,13 @@ void host1x_unlock_syncpt_waiter(struct host1x_syncpt_waiter *waiter)
     qemu_event_set(&waiter->syncpt_ev);
 }
 
-static void host1x_update_threshold_waiters(uint8_t syncpt_id,
-                                            struct host1x_syncpt *syncpt)
+static void host1x_update_threshold_waiters(struct host1x_syncpt *syncpt)
 {
     struct host1x_syncpt_waiter *waiter, *waiter_next;
 
     QLIST_FOREACH_SAFE(waiter, &syncpt->waiters, next, waiter_next) {
-        if (SYNCPT_TMASK(syncpt->counter) >= waiter->threshold) {
-            host1x_set_syncpt_irq(syncpt_id);
+        if (SYNCPT_TMASK(syncpt->counter) >= waiter->threshold)
             host1x_unlock_syncpt_waiter(waiter);
-        }
     }
 
     QLIST_FOREACH_SAFE(waiter, &syncpt->waiters_base, next, waiter_next) {
@@ -493,10 +490,13 @@ void host1x_incr_syncpt(uint8_t syncpt_id)
     TPRINT("%s: id=%d counter=%d counter_masked=%d\n", __func__, syncpt_id,
            syncpt->counter, SYNCPT_TMASK(syncpt->counter));
 
-    host1x_update_threshold_waiters(syncpt_id, syncpt);
+    host1x_update_threshold_waiters(syncpt);
 
     QLIST_FOREACH_SAFE(waiter, &syncpt->waiters_incr, next, waiter_next)
             host1x_unlock_syncpt_waiter(waiter);
+
+    if (SYNCPT_TMASK(syncpt->counter) >= syncpt->threshold)
+        host1x_set_syncpt_irq(syncpt_id);
 
     qemu_mutex_unlock(&syncpt->mutex);
 }
@@ -509,7 +509,7 @@ void host1x_set_syncpt_count(uint8_t syncpt_id, uint32_t val)
 
     qemu_mutex_lock(&syncpt->mutex);
     syncpts[syncpt_id].counter = val;
-    host1x_update_threshold_waiters(syncpt_id, syncpt);
+    host1x_update_threshold_waiters(syncpt);
     qemu_mutex_unlock(&syncpt->mutex);
 }
 
@@ -530,7 +530,7 @@ void host1x_set_syncpt_threshold(uint8_t syncpt_id, uint32_t val)
 
     qemu_mutex_lock(&syncpt->mutex);
     syncpts[syncpt_id].threshold = val;
-    host1x_update_threshold_waiters(syncpt_id, syncpt);
+    host1x_update_threshold_waiters(syncpt);
     qemu_mutex_unlock(&syncpt->mutex);
 }
 
