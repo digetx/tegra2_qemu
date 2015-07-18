@@ -246,7 +246,18 @@ void host1x_set_syncpt_irq(uint8_t syncpt_id)
 
 void host1x_clear_syncpts_cpu_irq_status(uint32_t clear_mask)
 {
+    int i;
+
     qemu_mutex_lock(&irq_mutex);
+
+    FOREACH_BIT_SET(clear_mask, i, 32) {
+        if (!(host1x_syncpts_dst_mask & (1 << (i * 2))))
+            continue;
+
+        /* Don't clear if IRQ line is enabled and active.  */
+        if (host1x_syncpt_threshold_is_crossed(i))
+            clear_mask &= ~(1 << i);
+    }
 
     host1x_syncpts_cpu_irq_status &= ~clear_mask;
 
@@ -257,7 +268,18 @@ void host1x_clear_syncpts_cpu_irq_status(uint32_t clear_mask)
 
 void host1x_clear_syncpts_cop_irq_status(uint32_t clear_mask)
 {
+    int i;
+
     qemu_mutex_lock(&irq_mutex);
+
+    FOREACH_BIT_SET(clear_mask, i, 32) {
+        if (!(host1x_syncpts_dst_mask & (1 << (i * 2 + 1))))
+            continue;
+
+        /* Don't clear if IRQ line is enabled and active.  */
+        if (host1x_syncpt_threshold_is_crossed(i))
+            clear_mask &= ~(1 << i);
+    }
 
     host1x_syncpts_cop_irq_status &= ~clear_mask;
 

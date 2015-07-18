@@ -53,6 +53,7 @@ void host1x_wait_syncpt_incr(struct host1x_syncpt_waiter *waiter,
                              uint8_t syncpt_id);
 void host1x_init_syncpts(void);
 void host1x_reset_syncpts(void);
+int host1x_syncpt_threshold_is_crossed(uint8_t syncpt_id);
 
 uint32_t host1x_get_sync_irq_status(void);
 uint32_t host1x_get_modules_irq_mask(void);

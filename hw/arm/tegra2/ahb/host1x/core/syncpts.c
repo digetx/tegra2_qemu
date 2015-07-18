@@ -722,3 +722,12 @@ void host1x_reset_syncpts(void)
 
     hwlock = 0;
 }
+
+int host1x_syncpt_threshold_is_crossed(uint8_t syncpt_id)
+{
+    struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
+
+    g_assert(syncpt_id < NV_HOST1X_SYNCPT_NB_PTS);
+
+    return (syncpt->counter >= syncpt->threshold);
+}
