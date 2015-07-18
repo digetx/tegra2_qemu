@@ -41,7 +41,7 @@ typedef union host1x_mlock {
 
 static host1x_mlock mlocks[NV_HOST1X_NB_MLOCKS];
 
-uint32_t host1x_cpu_get_mlock_val(uint8_t id)
+uint32_t host1x_cpu_get_mlock_val(uint32_t id)
 {
     host1x_mlock *mlock = &mlocks[id];
 
@@ -50,7 +50,7 @@ uint32_t host1x_cpu_get_mlock_val(uint8_t id)
     return mlock->reg32;
 }
 
-uint32_t host1x_cpu_acquire_mlock(uint8_t id)
+uint32_t host1x_cpu_acquire_mlock(uint32_t id)
 {
     host1x_mlock *mlock = &mlocks[id];
 
@@ -66,7 +66,7 @@ uint32_t host1x_cpu_acquire_mlock(uint8_t id)
     return !mlock->cpu_owns;
 }
 
-void host1x_cpu_release_mlock(uint8_t id)
+void host1x_cpu_release_mlock(uint32_t id)
 {
     host1x_mlock *mlock = &mlocks[id];
 
@@ -81,7 +81,7 @@ void host1x_cpu_release_mlock(uint8_t id)
     qemu_mutex_unlock(&mlock->mutex);
 }
 
-void host1x_ch_acquire_mlock(struct host1x_cdma *cdma, uint8_t id)
+void host1x_ch_acquire_mlock(struct host1x_cdma *cdma, uint32_t id)
 {
     host1x_mlock *mlock = &mlocks[id];
 
@@ -98,7 +98,7 @@ void host1x_ch_acquire_mlock(struct host1x_cdma *cdma, uint8_t id)
     qemu_mutex_unlock(&mlock->mutex);
 }
 
-void host1x_ch_release_mlock(struct host1x_cdma *cdma, uint8_t id)
+void host1x_ch_release_mlock(struct host1x_cdma *cdma, uint32_t id)
 {
     host1x_mlock *mlock = &mlocks[id];
 

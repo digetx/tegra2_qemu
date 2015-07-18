@@ -37,11 +37,11 @@ struct host1x_module {
 
 struct host1x_cdma;
 
-uint32_t host1x_cpu_get_mlock_val(uint8_t id);
-uint32_t host1x_cpu_acquire_mlock(uint8_t id);
-void host1x_cpu_release_mlock(uint8_t id);
-void host1x_ch_acquire_mlock(struct host1x_cdma *cdma, uint8_t id);
-void host1x_ch_release_mlock(struct host1x_cdma *cdma, uint8_t id);
+uint32_t host1x_cpu_get_mlock_val(uint32_t id);
+uint32_t host1x_cpu_acquire_mlock(uint32_t id);
+void host1x_cpu_release_mlock(uint32_t id);
+void host1x_ch_acquire_mlock(struct host1x_cdma *cdma, uint32_t id);
+void host1x_ch_release_mlock(struct host1x_cdma *cdma, uint32_t id);
 void host1x_wake_mlocked_channels(void);
 void host1x_reset_mlocks(void);
 void host1x_init_mlocks(void);

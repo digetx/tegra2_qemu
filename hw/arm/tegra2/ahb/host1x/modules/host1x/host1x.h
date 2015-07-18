@@ -44,7 +44,7 @@
 #define TVO         11
 #define DSI         12
 
-static inline uint8_t decode_class_id(uint8_t module_id)
+static inline uint8_t decode_class_id(uint32_t module_id)
 {
     switch (module_id) {
         case HOST1X:

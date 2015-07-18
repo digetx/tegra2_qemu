@@ -452,7 +452,7 @@ void host1x_unlock_syncpt_waiter(struct host1x_syncpt_waiter *waiter)
     qemu_event_set(&waiter->syncpt_ev);
 }
 
-static void host1x_update_threshold_waiters(uint8_t syncpt_id,
+static void host1x_update_threshold_waiters(uint32_t syncpt_id,
                                             struct host1x_syncpt *syncpt)
 {
     struct host1x_syncpt_waiter *waiter, *waiter_next;
@@ -480,7 +480,7 @@ static void host1x_update_threshold_waiters(uint8_t syncpt_id,
     }
 }
 
-void host1x_incr_syncpt(uint8_t syncpt_id)
+void host1x_incr_syncpt(uint32_t syncpt_id)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
     struct host1x_syncpt_waiter *waiter, *waiter_next;
@@ -502,7 +502,7 @@ void host1x_incr_syncpt(uint8_t syncpt_id)
     qemu_mutex_unlock(&syncpt->mutex);
 }
 
-void host1x_set_syncpt_count(uint8_t syncpt_id, uint32_t val)
+void host1x_set_syncpt_count(uint32_t syncpt_id, uint32_t val)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 
@@ -514,7 +514,7 @@ void host1x_set_syncpt_count(uint8_t syncpt_id, uint32_t val)
     qemu_mutex_unlock(&syncpt->mutex);
 }
 
-uint32_t host1x_get_syncpt_count(uint8_t syncpt_id)
+uint32_t host1x_get_syncpt_count(uint32_t syncpt_id)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 
@@ -523,7 +523,7 @@ uint32_t host1x_get_syncpt_count(uint8_t syncpt_id)
     return syncpt->counter;
 }
 
-void host1x_set_syncpt_threshold(uint8_t syncpt_id, uint32_t val)
+void host1x_set_syncpt_threshold(uint32_t syncpt_id, uint32_t val)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 
@@ -535,7 +535,7 @@ void host1x_set_syncpt_threshold(uint8_t syncpt_id, uint32_t val)
     qemu_mutex_unlock(&syncpt->mutex);
 }
 
-uint32_t host1x_get_syncpt_threshold(uint8_t syncpt_id)
+uint32_t host1x_get_syncpt_threshold(uint32_t syncpt_id)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 
@@ -544,7 +544,7 @@ uint32_t host1x_get_syncpt_threshold(uint8_t syncpt_id)
     return syncpt->threshold;
 }
 
-static void host1x_update_threshold_waiters_base(uint8_t syncpt_base_id)
+static void host1x_update_threshold_waiters_base(uint32_t syncpt_base_id)
 {
     struct host1x_syncpt_base *syncpt_base = &syncpt_bases[syncpt_base_id];
     int i;
@@ -575,7 +575,7 @@ static void host1x_update_threshold_waiters_base(uint8_t syncpt_base_id)
     }
 }
 
-void host1x_set_syncpt_base(uint8_t syncpt_base_id, uint32_t val)
+void host1x_set_syncpt_base(uint32_t syncpt_base_id, uint32_t val)
 {
     struct host1x_syncpt_base *syncpt_base = &syncpt_bases[syncpt_base_id];
 
@@ -588,7 +588,7 @@ void host1x_set_syncpt_base(uint8_t syncpt_base_id, uint32_t val)
     host1x_update_threshold_waiters_base(syncpt_base_id);
 }
 
-void host1x_incr_syncpt_base(uint8_t syncpt_base_id, uint32_t val)
+void host1x_incr_syncpt_base(uint32_t syncpt_base_id, uint32_t val)
 {
     struct host1x_syncpt_base *syncpt_base = &syncpt_bases[syncpt_base_id];
 
@@ -601,7 +601,7 @@ void host1x_incr_syncpt_base(uint8_t syncpt_base_id, uint32_t val)
     host1x_update_threshold_waiters_base(syncpt_base_id);
 }
 
-uint32_t host1x_get_syncpt_base(uint8_t syncpt_base_id)
+uint32_t host1x_get_syncpt_base(uint32_t syncpt_base_id)
 {
     struct host1x_syncpt_base *syncpt_base = &syncpt_bases[syncpt_base_id];
 
@@ -616,7 +616,7 @@ void host1x_init_syncpt_waiter(struct host1x_syncpt_waiter *waiter)
 }
 
 void host1x_wait_syncpt(struct host1x_syncpt_waiter *waiter,
-                        uint8_t syncpt_id, uint32_t threshold)
+                        uint32_t syncpt_id, uint32_t threshold)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 
@@ -642,7 +642,7 @@ void host1x_wait_syncpt(struct host1x_syncpt_waiter *waiter,
 }
 
 void host1x_wait_syncpt_base(struct host1x_syncpt_waiter *waiter,
-                             uint8_t syncpt_id, uint8_t syncpt_base_id,
+                             uint32_t syncpt_id, uint32_t syncpt_base_id,
                              uint32_t offset)
 {
     struct host1x_syncpt_base *syncpt_base = &syncpt_bases[syncpt_base_id];
@@ -674,7 +674,7 @@ void host1x_wait_syncpt_base(struct host1x_syncpt_waiter *waiter,
 }
 
 void host1x_wait_syncpt_incr(struct host1x_syncpt_waiter *waiter,
-                             uint8_t syncpt_id)
+                             uint32_t syncpt_id)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 
@@ -723,7 +723,7 @@ void host1x_reset_syncpts(void)
     hwlock = 0;
 }
 
-int host1x_syncpt_threshold_is_crossed(uint8_t syncpt_id)
+int host1x_syncpt_threshold_is_crossed(uint32_t syncpt_id)
 {
     struct host1x_syncpt *syncpt = &syncpts[syncpt_id];
 

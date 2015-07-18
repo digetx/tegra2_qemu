@@ -35,25 +35,25 @@ struct host1x_syncpt_waiter {
 };
 
 void host1x_unlock_syncpt_waiter(struct host1x_syncpt_waiter *waiter);
-void host1x_incr_syncpt(uint8_t syncpt_id);
-void host1x_set_syncpt_count(uint8_t syncpt_id, uint32_t val);
-uint32_t host1x_get_syncpt_count(uint8_t syncpt_id);
-void host1x_set_syncpt_threshold(uint8_t syncpt_id, uint32_t val);
-uint32_t host1x_get_syncpt_threshold(uint8_t syncpt_id);
-void host1x_set_syncpt_base(uint8_t syncpt_base_id, uint32_t val);
-void host1x_incr_syncpt_base(uint8_t syncpt_base_id, uint32_t val);
-uint32_t host1x_get_syncpt_base(uint8_t syncpt_base_id);
+void host1x_incr_syncpt(uint32_t syncpt_id);
+void host1x_set_syncpt_count(uint32_t syncpt_id, uint32_t val);
+uint32_t host1x_get_syncpt_count(uint32_t syncpt_id);
+void host1x_set_syncpt_threshold(uint32_t syncpt_id, uint32_t val);
+uint32_t host1x_get_syncpt_threshold(uint32_t syncpt_id);
+void host1x_set_syncpt_base(uint32_t syncpt_base_id, uint32_t val);
+void host1x_incr_syncpt_base(uint32_t syncpt_base_id, uint32_t val);
+uint32_t host1x_get_syncpt_base(uint32_t syncpt_base_id);
 void host1x_init_syncpt_waiter(struct host1x_syncpt_waiter *waiter);
 void host1x_wait_syncpt(struct host1x_syncpt_waiter *waiter,
-                        uint8_t syncpt_id, uint32_t threshold);
+                        uint32_t syncpt_id, uint32_t threshold);
 void host1x_wait_syncpt_base(struct host1x_syncpt_waiter *waiter,
-                             uint8_t syncpt_id, uint8_t syncpt_base_id,
+                             uint32_t syncpt_id, uint32_t syncpt_base_id,
                              uint32_t offset);
 void host1x_wait_syncpt_incr(struct host1x_syncpt_waiter *waiter,
-                             uint8_t syncpt_id);
+                             uint32_t syncpt_id);
 void host1x_init_syncpts(void);
 void host1x_reset_syncpts(void);
-int host1x_syncpt_threshold_is_crossed(uint8_t syncpt_id);
+int host1x_syncpt_threshold_is_crossed(uint32_t syncpt_id);
 
 uint32_t host1x_get_sync_irq_status(void);
 uint32_t host1x_get_modules_irq_mask(void);
