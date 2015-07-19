@@ -452,16 +452,26 @@ void host1x_unlock_syncpt_waiter(struct host1x_syncpt_waiter *waiter)
     qemu_event_set(&waiter->syncpt_ev);
 }
 
+/* Host1x uses HW optimization for syncpt/threshold comparison.  */
+static int syncpt_reached_threshold(uint32_t counter, uint32_t threshold)
+{
+    uint32_t sub = threshold - counter;
+    int overflow = !!(sub & (1 << (NV_HOST1X_SYNCPT_THESH_WIDTH - 1)));
+    int eq = !(sub & ((1 << (NV_HOST1X_SYNCPT_THESH_WIDTH - 1)) - 1));
+
+    return ((overflow && !eq) || (!overflow && eq));
+}
+
 static void host1x_update_threshold_waiters(uint32_t syncpt_id,
                                             struct host1x_syncpt *syncpt)
 {
     struct host1x_syncpt_waiter *waiter, *waiter_next;
 
-    if (syncpt->counter >= syncpt->threshold)
+    if (syncpt_reached_threshold(syncpt->counter, syncpt->threshold))
         host1x_set_syncpt_irq(syncpt_id);
 
     QLIST_FOREACH_SAFE(waiter, &syncpt->waiters, next, waiter_next) {
-        if (SYNCPT_TMASK(syncpt->counter) >= waiter->threshold)
+        if (syncpt_reached_threshold(syncpt->counter, waiter->threshold))
             host1x_unlock_syncpt_waiter(waiter);
     }
 
@@ -471,9 +481,9 @@ static void host1x_update_threshold_waiters(uint32_t syncpt_id,
 
         qemu_mutex_lock(&syncpt_base->mutex);
 
-        threshold = SYNCPT_TMASK(syncpt_base->base + waiter->threshold);
+        threshold = syncpt_base->base + waiter->threshold;
 
-        if (SYNCPT_TMASK(syncpt->counter) >= threshold)
+        if (syncpt_reached_threshold(syncpt->counter, threshold))
             host1x_unlock_syncpt_waiter(waiter);
 
         qemu_mutex_unlock(&syncpt_base->mutex);
@@ -563,9 +573,9 @@ static void host1x_update_threshold_waiters_base(uint32_t syncpt_base_id)
 
             qemu_mutex_lock(&syncpt_base->mutex);
 
-            threshold = SYNCPT_TMASK(syncpt_base->base + waiter->threshold);
+            threshold = syncpt_base->base + waiter->threshold;
 
-            if (SYNCPT_TMASK(syncpt->counter) >= threshold)
+            if (syncpt_reached_threshold(syncpt->counter, threshold))
                 host1x_unlock_syncpt_waiter(waiter);
 
             qemu_mutex_unlock(&syncpt_base->mutex);
@@ -631,7 +641,7 @@ void host1x_wait_syncpt(struct host1x_syncpt_waiter *waiter,
 //         printf("syncpt_id %d threshold=%d overflow waiter->threshold=%d syncpt->counter=%d\n",
 //                syncpt_id, threshold, waiter->threshold, SYNCPT_TMASK(syncpt->counter));
 
-    if (SYNCPT_TMASK(syncpt->counter) < waiter->threshold) {
+    if (!syncpt_reached_threshold(syncpt->counter, waiter->threshold)) {
         QLIST_INSERT_HEAD(&syncpt->waiters, waiter, next);
         qemu_event_reset(&waiter->syncpt_ev);
     }
@@ -658,12 +668,12 @@ void host1x_wait_syncpt_base(struct host1x_syncpt_waiter *waiter,
     waiter->threshold = offset;
     waiter->base_id = syncpt_base_id;
 
-    threshold = SYNCPT_TMASK(syncpt_base->base + waiter->threshold);
+    threshold = syncpt_base->base + waiter->threshold;
 
 //     TPRINT("%s: threshold=%d syncpt=%d\n", __func__, threshold,
 //            SYNCPT_TMASK(syncpt->counter));
 
-    if (SYNCPT_TMASK(syncpt->counter) < threshold) {
+    if (!syncpt_reached_threshold(syncpt->counter, threshold)) {
         QLIST_INSERT_HEAD(&syncpt->waiters_base, waiter, next);
         qemu_event_reset(&waiter->syncpt_ev);
     }
@@ -729,5 +739,5 @@ int host1x_syncpt_threshold_is_crossed(uint32_t syncpt_id)
 
     g_assert(syncpt_id < NV_HOST1X_SYNCPT_NB_PTS);
 
-    return (syncpt->counter >= syncpt->threshold);
+    return syncpt_reached_threshold(syncpt->counter, syncpt->threshold);
 }
