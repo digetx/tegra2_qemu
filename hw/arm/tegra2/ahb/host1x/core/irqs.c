@@ -169,6 +169,11 @@ void host1x_enable_syncpts_cpu_irq_mask(uint32_t enable_mask)
         host1x_syncpts_dst_mask |= 1 << (i * 2);
 
     qemu_mutex_unlock(&irq_mutex);
+
+    FOREACH_BIT_SET(enable_mask, i, 32) {
+        if (host1x_syncpt_threshold_is_crossed(i))
+            host1x_set_syncpt_irq(i);
+    }
 }
 
 static void host1x_update_cop_irq(void)
@@ -197,6 +202,11 @@ void host1x_enable_syncpts_cop_irq_mask(uint32_t enable_mask)
         host1x_syncpts_dst_mask |= 1 << (i * 2 + 1);
 
     qemu_mutex_unlock(&irq_mutex);
+
+    FOREACH_BIT_SET(enable_mask, i, 32) {
+        if (host1x_syncpt_threshold_is_crossed(i))
+            host1x_set_syncpt_irq(i);
+    }
 }
 
 void host1x_set_syncpts_irq_dst_mask(uint32_t mask, uint8_t part)
