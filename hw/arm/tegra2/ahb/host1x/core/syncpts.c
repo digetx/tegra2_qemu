@@ -263,11 +263,11 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
         break;
     case INTC0MASK_OFFSET:
         TRACE_WRITE(base, offset, host1x_get_modules_irq_cpu_mask(), value);
-        host1x_set_modules_cpu_irq_mask(value);
+        host1x_set_modules_percpu_irq_mask(HOST1X_CPU, value);
         break;
     case INTC1MASK_OFFSET:
         TRACE_WRITE(base, offset, host1x_get_modules_irq_cop_mask(), value);
-        host1x_set_modules_cop_irq_mask(value);
+        host1x_set_modules_percpu_irq_mask(HOST1X_COP, value);
         break;
     case HINTSTATUS_OFFSET:
         TRACE_WRITE(base, offset, 0, value & HINTSTATUS_WRMASK);
@@ -283,11 +283,11 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
         break;
     case SYNCPT_THRESH_CPU0_INT_STATUS_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
-        host1x_clear_syncpts_cpu_irq_status(value);
+        host1x_clear_syncpts_irq_status(HOST1X_CPU, value);
         break;
     case SYNCPT_THRESH_CPU1_INT_STATUS_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
-        host1x_clear_syncpts_cop_irq_status(value);
+        host1x_clear_syncpts_irq_status(HOST1X_COP, value);
         break;
     case SYNCPT_THRESH_INT_MASK_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
@@ -303,11 +303,11 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
         break;
     case SYNCPT_THRESH_INT_ENABLE_CPU0_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
-        host1x_enable_syncpts_cpu_irq_mask(value);
+        host1x_enable_syncpts_irq_mask(HOST1X_CPU, value);
         break;
     case SYNCPT_THRESH_INT_ENABLE_CPU1_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
-        host1x_enable_syncpts_cop_irq_mask(value);
+        host1x_enable_syncpts_irq_mask(HOST1X_COP, value);
         break;
     case CF0_SETUP_OFFSET ... CF7_SETUP_OFFSET:
         TRACE_WRITE(base, offset, 0, value);

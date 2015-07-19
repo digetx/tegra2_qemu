@@ -27,28 +27,23 @@
 
 #define MODULES_MASK    0xFFF
 
-#define CPU 0
-#define COP 1
-
 #define CPU_IRQ(v)  ((1 << 0) | ((!!v) << 1))
 #define COP_IRQ(v)  ((1 << 2) | ((!!v) << 3))
 
 static uint32_t host1x_sync_irq_status;
 static uint32_t host1x_modules_irq_mask;
-static uint32_t host1x_modules_irq_cpu_mask;
-static uint32_t host1x_modules_irq_cop_mask;
+static uint32_t host1x_modules_percpu_irq_mask[2];
 
-static uint32_t host1x_syncpts_cpu_irq_status;
-static uint32_t host1x_syncpts_cop_irq_status;
+static uint32_t host1x_syncpts_irq_status[2];
 static uint64_t host1x_syncpts_dst_mask;
 
 static qemu_irq *syncpts_irq;
 
 static QemuMutex irq_mutex;
 
-static void host1x_set_irq_status_bit(uint8_t irq_bit, int cpu_id, bool enable)
+static void host1x_set_irq_status_bit(int cpu_id, bool enable)
 {
-    uint32_t irq_mask = 1 << irq_bit;
+    uint32_t irq_mask = 1 << (30 + cpu_id);
     int sts_updated;
 
     g_assert(irq_mask & 0xC0001FFF);
@@ -65,10 +60,10 @@ static void host1x_set_irq_status_bit(uint8_t irq_bit, int cpu_id, bool enable)
         return;
 
     switch (cpu_id) {
-        case CPU:
+        case HOST1X_CPU:
             TRACE_IRQ_SET(0x50003000, *syncpts_irq, CPU_IRQ(enable));
             break;
-        case COP:
+        case HOST1X_COP:
             TRACE_IRQ_SET(0x50003000, *syncpts_irq, COP_IRQ(enable));
             break;
         default:
@@ -88,22 +83,22 @@ inline uint32_t host1x_get_modules_irq_mask(void)
 
 inline uint32_t host1x_get_modules_irq_cpu_mask(void)
 {
-    return host1x_modules_irq_cpu_mask;
+    return host1x_modules_percpu_irq_mask[HOST1X_CPU];
 }
 
 inline uint32_t host1x_get_modules_irq_cop_mask(void)
 {
-    return host1x_modules_irq_cop_mask;
+    return host1x_modules_percpu_irq_mask[HOST1X_COP];
 }
 
 inline uint32_t host1x_get_syncpts_cpu_irq_status(void)
 {
-    return host1x_syncpts_cpu_irq_status;
+    return host1x_syncpts_irq_status[HOST1X_CPU];
 }
 
 inline uint32_t host1x_get_syncpts_cop_irq_status(void)
 {
-    return host1x_syncpts_cop_irq_status;
+    return host1x_syncpts_irq_status[HOST1X_COP];
 }
 
 inline uint32_t host1x_get_syncpts_dst_mask_low(void)
@@ -125,39 +120,16 @@ void host1x_set_modules_irq_mask(uint32_t mask)
     qemu_mutex_unlock(&irq_mutex);
 }
 
-void host1x_set_modules_cpu_irq_mask(uint32_t mask)
+void host1x_set_modules_percpu_irq_mask(int cpu_id, uint32_t mask)
 {
     qemu_mutex_lock(&irq_mutex);
 
-    host1x_modules_irq_cpu_mask = mask & MODULES_MASK;
+    host1x_modules_percpu_irq_mask[cpu_id] = mask & MODULES_MASK;
 
     qemu_mutex_unlock(&irq_mutex);
 }
 
-void host1x_set_modules_cop_irq_mask(uint32_t mask)
-{
-    qemu_mutex_lock(&irq_mutex);
-
-    host1x_modules_irq_cop_mask = mask & MODULES_MASK;
-
-    qemu_mutex_unlock(&irq_mutex);
-}
-
-static void host1x_update_cpu_irq(void)
-{
-    uint32_t i;
-
-    FOREACH_BIT_SET(host1x_syncpts_cpu_irq_status, i, NV_HOST1X_SYNCPT_NB_PTS) {
-        if (host1x_syncpts_dst_mask & (1 << (i * 2))) {
-            host1x_set_irq_status_bit(30, CPU, 1);
-            return;
-        }
-    }
-
-    host1x_set_irq_status_bit(30, CPU, 0);
-}
-
-void host1x_enable_syncpts_cpu_irq_mask(uint32_t enable_mask)
+void host1x_enable_syncpts_irq_mask(int cpu_id, uint32_t enable_mask)
 {
     unsigned i;
 
@@ -166,40 +138,7 @@ void host1x_enable_syncpts_cpu_irq_mask(uint32_t enable_mask)
     qemu_mutex_lock(&irq_mutex);
 
     FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS)
-        host1x_syncpts_dst_mask |= 1 << (i * 2);
-
-    qemu_mutex_unlock(&irq_mutex);
-
-    FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
-        if (host1x_syncpt_threshold_is_crossed(i))
-            host1x_set_syncpt_irq(i);
-    }
-}
-
-static void host1x_update_cop_irq(void)
-{
-    unsigned i;
-
-    FOREACH_BIT_SET(host1x_syncpts_cop_irq_status, i, NV_HOST1X_SYNCPT_NB_PTS) {
-        if (host1x_syncpts_dst_mask & (1 << (i * 2 + 1))) {
-            host1x_set_irq_status_bit(31, COP, 1);
-            return;
-        }
-    }
-
-    host1x_set_irq_status_bit(31, COP, 0);
-}
-
-void host1x_enable_syncpts_cop_irq_mask(uint32_t enable_mask)
-{
-    unsigned i;
-
-    TPRINT("%s: 0x%08X\n", __func__, enable_mask);
-
-    qemu_mutex_lock(&irq_mutex);
-
-    FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS)
-        host1x_syncpts_dst_mask |= 1 << (i * 2 + 1);
+        host1x_syncpts_dst_mask |= 1 << (i * 2 + cpu_id);
 
     qemu_mutex_unlock(&irq_mutex);
 
@@ -241,27 +180,41 @@ void host1x_set_syncpt_irq(uint8_t syncpt_id)
 
     qemu_mutex_lock(&irq_mutex);
 
-    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2))) {
-        host1x_syncpts_cpu_irq_status |= syncpt_id_irq_mask;
-        host1x_set_irq_status_bit(30, CPU, 1);
+    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2 + HOST1X_CPU))) {
+        host1x_syncpts_irq_status[HOST1X_CPU] |= syncpt_id_irq_mask;
+        host1x_set_irq_status_bit(HOST1X_CPU, 1);
     }
 
-    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2 + 1))) {
-        host1x_syncpts_cop_irq_status |= syncpt_id_irq_mask;
-        host1x_set_irq_status_bit(31, COP, 1);
+    if (host1x_syncpts_dst_mask & (1 << (syncpt_id * 2 + HOST1X_COP))) {
+        host1x_syncpts_irq_status[HOST1X_COP] |= syncpt_id_irq_mask;
+        host1x_set_irq_status_bit(HOST1X_COP, 1);
     }
 
     qemu_mutex_unlock(&irq_mutex);
 }
 
-void host1x_clear_syncpts_cpu_irq_status(uint32_t clear_mask)
+static void host1x_update_irq(int cpu_id)
+{
+    unsigned i;
+
+    FOREACH_BIT_SET(host1x_syncpts_irq_status[cpu_id], i, NV_HOST1X_SYNCPT_NB_PTS) {
+        if (host1x_syncpts_dst_mask & (1 << (i * 2 + cpu_id))) {
+            host1x_set_irq_status_bit(cpu_id, 1);
+            return;
+        }
+    }
+
+    host1x_set_irq_status_bit(cpu_id, 0);
+}
+
+void host1x_clear_syncpts_irq_status(int cpu_id, uint32_t clear_mask)
 {
     int i;
 
     qemu_mutex_lock(&irq_mutex);
 
     FOREACH_BIT_SET(clear_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
-        if (!(host1x_syncpts_dst_mask & (1 << (i * 2))))
+        if (!(host1x_syncpts_dst_mask & (1 << (i * 2 + cpu_id))))
             continue;
 
         /* Don't clear if IRQ line is enabled and active.  */
@@ -269,31 +222,9 @@ void host1x_clear_syncpts_cpu_irq_status(uint32_t clear_mask)
             clear_mask &= ~(1 << i);
     }
 
-    host1x_syncpts_cpu_irq_status &= ~clear_mask;
+    host1x_syncpts_irq_status[cpu_id] &= ~clear_mask;
 
-    host1x_update_cpu_irq();
-
-    qemu_mutex_unlock(&irq_mutex);
-}
-
-void host1x_clear_syncpts_cop_irq_status(uint32_t clear_mask)
-{
-    int i;
-
-    qemu_mutex_lock(&irq_mutex);
-
-    FOREACH_BIT_SET(clear_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
-        if (!(host1x_syncpts_dst_mask & (1 << (i * 2 + 1))))
-            continue;
-
-        /* Don't clear if IRQ line is enabled and active.  */
-        if (host1x_syncpt_threshold_is_crossed(i))
-            clear_mask &= ~(1 << i);
-    }
-
-    host1x_syncpts_cop_irq_status &= ~clear_mask;
-
-    host1x_update_cop_irq();
+    host1x_update_irq(cpu_id);
 
     qemu_mutex_unlock(&irq_mutex);
 }
@@ -309,7 +240,7 @@ void host1x_reset_irqs(void)
 {
     host1x_sync_irq_status = 0;
     host1x_modules_irq_mask = 0;
-    host1x_modules_irq_cpu_mask = 0;
-    host1x_modules_irq_cop_mask = 0;
+    host1x_modules_percpu_irq_mask[HOST1X_CPU] = 0;
+    host1x_modules_percpu_irq_mask[HOST1X_COP] = 0;
     host1x_syncpts_dst_mask = 0;
 }
