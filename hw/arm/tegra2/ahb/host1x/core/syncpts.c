@@ -392,7 +392,7 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
     case SYNCPT_CPU_INCR_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
 
-        FOREACH_BIT_SET(value, i, 32)
+        FOREACH_BIT_SET(value, i, NV_HOST1X_SYNCPT_NB_PTS)
             host1x_incr_syncpt(i);
         break;
     case WAITOVR_OFFSET:

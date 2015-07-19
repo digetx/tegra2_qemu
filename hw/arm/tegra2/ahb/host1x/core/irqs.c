@@ -147,7 +147,7 @@ static void host1x_update_cpu_irq(void)
 {
     uint32_t i;
 
-    FOREACH_BIT_SET(host1x_syncpts_cpu_irq_status, i, 32) {
+    FOREACH_BIT_SET(host1x_syncpts_cpu_irq_status, i, NV_HOST1X_SYNCPT_NB_PTS) {
         if (host1x_syncpts_dst_mask & (1 << (i * 2))) {
             host1x_set_irq_status_bit(30, CPU, 1);
             return;
@@ -165,12 +165,12 @@ void host1x_enable_syncpts_cpu_irq_mask(uint32_t enable_mask)
 
     qemu_mutex_lock(&irq_mutex);
 
-    FOREACH_BIT_SET(enable_mask, i, 32)
+    FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS)
         host1x_syncpts_dst_mask |= 1 << (i * 2);
 
     qemu_mutex_unlock(&irq_mutex);
 
-    FOREACH_BIT_SET(enable_mask, i, 32) {
+    FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
         if (host1x_syncpt_threshold_is_crossed(i))
             host1x_set_syncpt_irq(i);
     }
@@ -180,7 +180,7 @@ static void host1x_update_cop_irq(void)
 {
     unsigned i;
 
-    FOREACH_BIT_SET(host1x_syncpts_cop_irq_status, i, 32) {
+    FOREACH_BIT_SET(host1x_syncpts_cop_irq_status, i, NV_HOST1X_SYNCPT_NB_PTS) {
         if (host1x_syncpts_dst_mask & (1 << (i * 2 + 1))) {
             host1x_set_irq_status_bit(31, COP, 1);
             return;
@@ -198,12 +198,12 @@ void host1x_enable_syncpts_cop_irq_mask(uint32_t enable_mask)
 
     qemu_mutex_lock(&irq_mutex);
 
-    FOREACH_BIT_SET(enable_mask, i, 32)
+    FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS)
         host1x_syncpts_dst_mask |= 1 << (i * 2 + 1);
 
     qemu_mutex_unlock(&irq_mutex);
 
-    FOREACH_BIT_SET(enable_mask, i, 32) {
+    FOREACH_BIT_SET(enable_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
         if (host1x_syncpt_threshold_is_crossed(i))
             host1x_set_syncpt_irq(i);
     }
@@ -227,7 +227,7 @@ void host1x_clear_syncpts_irq_dst_mask(uint32_t clear_mask)
 
     qemu_mutex_lock(&irq_mutex);
 
-    FOREACH_BIT_SET(clear_mask, i, 32)
+    FOREACH_BIT_SET(clear_mask, i, NV_HOST1X_SYNCPT_NB_PTS)
         host1x_syncpts_dst_mask &= ~(3 << (i * 2));
 
     qemu_mutex_unlock(&irq_mutex);
@@ -260,7 +260,7 @@ void host1x_clear_syncpts_cpu_irq_status(uint32_t clear_mask)
 
     qemu_mutex_lock(&irq_mutex);
 
-    FOREACH_BIT_SET(clear_mask, i, 32) {
+    FOREACH_BIT_SET(clear_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
         if (!(host1x_syncpts_dst_mask & (1 << (i * 2))))
             continue;
 
@@ -282,7 +282,7 @@ void host1x_clear_syncpts_cop_irq_status(uint32_t clear_mask)
 
     qemu_mutex_lock(&irq_mutex);
 
-    FOREACH_BIT_SET(clear_mask, i, 32) {
+    FOREACH_BIT_SET(clear_mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
         if (!(host1x_syncpts_dst_mask & (1 << (i * 2 + 1))))
             continue;
 
