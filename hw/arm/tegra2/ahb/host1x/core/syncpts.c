@@ -452,6 +452,47 @@ void host1x_unlock_syncpt_waiter(struct host1x_syncpt_waiter *waiter)
     qemu_event_set(&waiter->syncpt_ev);
 }
 
+void host1x_unlock_syncpt_waiter_forced(struct host1x_syncpt_waiter *waiter)
+{
+    struct host1x_syncpt_waiter *waiter__, *waiter_next;
+    int i;
+
+    for (i = 0; i < NV_HOST1X_SYNCPT_NB_PTS; i++) {
+        struct host1x_syncpt *syncpt = &syncpts[i];
+
+        qemu_mutex_lock(&syncpt->mutex);
+
+        QLIST_FOREACH_SAFE(waiter__, &syncpt->waiters, next, waiter_next) {
+            if (waiter != waiter__)
+                continue;
+
+            host1x_unlock_syncpt_waiter(waiter);
+            qemu_mutex_unlock(&syncpt->mutex);
+            return;
+        }
+
+        QLIST_FOREACH_SAFE(waiter__, &syncpt->waiters_base, next, waiter_next) {
+            if (waiter != waiter__)
+                continue;
+
+            host1x_unlock_syncpt_waiter(waiter);
+            qemu_mutex_unlock(&syncpt->mutex);
+            return;
+        }
+
+        QLIST_FOREACH_SAFE(waiter__, &syncpt->waiters_incr, next, waiter_next) {
+            if (waiter != waiter__)
+                continue;
+
+            host1x_unlock_syncpt_waiter(waiter);
+            qemu_mutex_unlock(&syncpt->mutex);
+            return;
+        }
+
+        qemu_mutex_unlock(&syncpt->mutex);
+    }
+}
+
 /* Host1x uses HW optimization for syncpt/threshold comparison.  */
 static int syncpt_reached_threshold(uint32_t counter, uint32_t threshold)
 {

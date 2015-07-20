@@ -96,6 +96,7 @@ void host1x_cdma_control(struct host1x_cdma *cdma,
     if (dma_stop) {
         cdma->enabled = 0;
         host1x_wake_mlocked_channels();
+        host1x_unlock_syncpt_waiter_forced(&cdma->waiter);
     }
 
     qemu_event_wait(&cdma->stop_ev);

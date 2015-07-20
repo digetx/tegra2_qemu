@@ -38,6 +38,7 @@ struct host1x_syncpt_waiter {
 };
 
 void host1x_unlock_syncpt_waiter(struct host1x_syncpt_waiter *waiter);
+void host1x_unlock_syncpt_waiter_forced(struct host1x_syncpt_waiter *waiter);
 void host1x_incr_syncpt(uint32_t syncpt_id);
 void host1x_set_syncpt_count(uint32_t syncpt_id, uint32_t val);
 uint32_t host1x_get_syncpt_count(uint32_t syncpt_id);
