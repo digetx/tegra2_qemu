@@ -183,6 +183,7 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
         if (s->indoff.acctype == REG) {
             /* Indirect host1x module reg write */
             struct host1x_module *module = get_host1x_module(s->class_id);
+            host1x_cdma_ptr = &s->cdma;
 
             host1x_module_write(module, s->indoffset, value);
         } else {
