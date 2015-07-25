@@ -20,6 +20,8 @@
 #ifndef HOST1X_MODULE_H
 #define HOST1X_MODULE_H
 
+#include <stdint.h>
+
 #include "qemu/queue.h"
 #include "qemu/thread.h"
 
@@ -47,7 +49,7 @@ void host1x_reset_mlocks(void);
 void host1x_init_mlocks(void);
 void register_host1x_bus_module(struct host1x_module* module, void *opaque);
 struct host1x_module* get_host1x_module(uint32_t class_id);
-uint32_t host1x_module_read(struct host1x_module* module, hwaddr offset);
+uint32_t host1x_module_read(struct host1x_module* module, uint32_t offset);
 void host1x_module_write(struct host1x_module* module,
-                         hwaddr offset, uint32_t value);
+                         uint32_t offset, uint32_t value);
 #endif // HOST1X_MODULE_H

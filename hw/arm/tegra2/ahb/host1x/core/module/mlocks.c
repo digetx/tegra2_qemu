@@ -17,10 +17,6 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
-
-#include "tegra_trace.h"
-
 #include "host1x_cdma.h"
 #include "host1x_module.h"
 #include "host1x_priv.h"
@@ -149,51 +145,4 @@ void host1x_init_mlocks(void)
         qemu_mutex_init(&mlocks[i].mutex);
         qemu_cond_init(&mlocks[i].release_cond);
     }
-}
-
-static QLIST_HEAD(, host1x_module) host1x_modules =
-    QLIST_HEAD_INITIALIZER(host1x_modules);
-
-void register_host1x_bus_module(struct host1x_module* module, void *opaque)
-{
-    module->owner = -1;
-    module->opaque = opaque;
-    QLIST_INSERT_HEAD(&host1x_modules, module, next);
-}
-
-struct host1x_module* get_host1x_module(uint32_t class_id)
-{
-    struct host1x_module* module;
-
-    QLIST_FOREACH(module, &host1x_modules, next) {
-        if (module->class_id == class_id)
-            return module;
-    }
-
-    TPRINT("%s: failed class_id=0x%02X\n", __func__, class_id);
-
-    return NULL;
-}
-
-uint32_t host1x_module_read(struct host1x_module* module, hwaddr offset)
-{
-    uint32_t ret;
-
-    g_assert(module != NULL);
-
-    ret = module->reg_read(module, offset);
-
-    return ret;
-}
-
-void host1x_module_write(struct host1x_module* module,
-                         hwaddr offset, uint32_t value)
-{
-    g_assert(module != NULL);
-
-//     TPRINT("%s+: class_id=0x%02X\n", __func__, module->class_id);
-
-    module->reg_write(module, offset, value);
-
-//     TPRINT("%s-: class_id=0x%02X\n", __func__, module->class_id);
 }
