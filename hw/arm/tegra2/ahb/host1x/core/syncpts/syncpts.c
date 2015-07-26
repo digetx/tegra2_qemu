@@ -20,7 +20,7 @@
 #include <assert.h>
 
 #include "host1x_syncpts.h"
-#include "hwlock.h"
+#include "host1x_hwlock.h"
 #include "syncpts.h"
 
 enum stype {

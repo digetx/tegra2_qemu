@@ -21,10 +21,9 @@
 
 #include "host1x_module.h"
 #include "host1x_syncpts.h"
+#include "host1x_hwlock.h"
 
 #include "tegra_trace.h"
-
-#include "hwlock.h"
 
 uint32_t host1x_sync_read_reg(uint32_t addr)
 {

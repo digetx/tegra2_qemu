@@ -21,7 +21,7 @@
 #include <stdint.h>
 
 #include "host1x_priv.h"
-#include "hwlock.h"
+#include "host1x_hwlock.h"
 
 static uint32_t hwlock;
 
