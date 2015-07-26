@@ -25,6 +25,8 @@
 #include "qemu/queue.h"
 #include "qemu/thread.h"
 
+#include "host1x_priv.h"
+
 struct host1x_module {
     uint8_t module_id;
     uint8_t class_id;
@@ -52,4 +54,12 @@ struct host1x_module* get_host1x_module(uint32_t class_id);
 uint32_t host1x_module_read(struct host1x_module* module, uint32_t offset);
 void host1x_module_write(struct host1x_module* module,
                          uint32_t offset, uint32_t value);
+
+uint32_t host1x_get_modules_irq_mask(void);
+uint32_t host1x_get_modules_irq_cpu_mask(void);
+uint32_t host1x_get_modules_irq_cop_mask(void);
+void host1x_set_modules_irq_mask(uint32_t mask);
+void host1x_set_modules_percpu_irq_mask(enum hcpu cpu_id, uint32_t mask);
+void host1x_reset_modules_irqs(void);
+
 #endif // HOST1X_MODULE_H

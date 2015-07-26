@@ -28,9 +28,6 @@
 
 #include "host1x_priv.h"
 
-#define HOST1X_CPU  0
-#define HOST1X_COP  1
-
 struct host1x_syncpt_waiter {
     unsigned int threshold:NV_HOST1X_SYNCPT_THESH_WIDTH;
     QLIST_ENTRY(host1x_syncpt_waiter) next;
@@ -60,25 +57,20 @@ void host1x_init_syncpts(void);
 void host1x_reset_syncpts(void);
 int host1x_syncpt_threshold_is_crossed(uint32_t syncpt_id);
 
-uint32_t host1x_get_sync_irq_status(void);
-uint32_t host1x_get_modules_irq_mask(void);
-uint32_t host1x_get_modules_irq_cpu_mask(void);
-uint32_t host1x_get_modules_irq_cop_mask(void);
+uint32_t host1x_get_syncpts_irq_status(void);
 uint32_t host1x_get_syncpts_cpu_irq_status(void);
 uint32_t host1x_get_syncpts_cop_irq_status(void);
 uint32_t host1x_get_syncpts_dst_mask_low(void);
 uint32_t host1x_get_syncpts_dst_mask_high(void);
 uint32_t host1x_sync_read_reg(uint32_t addr);
 void host1x_sync_write_reg(uint32_t addr, uint32_t value);
-void host1x_set_modules_irq_mask(uint32_t mask);
-void host1x_set_modules_percpu_irq_mask(int cpu_id, uint32_t mask);
-void host1x_enable_syncpts_irq_mask(int cpu_id, uint32_t enable_mask);
-void host1x_set_syncpts_irq_dst_mask(uint32_t mask, uint8_t part);
+void host1x_enable_syncpts_irq_mask(enum hcpu cpu_id, uint32_t enable_mask);
+void host1x_set_syncpts_irq_dst_mask(int part, uint32_t mask);
 void host1x_clear_syncpts_irq_dst_mask(uint32_t clear_mask);
 void host1x_set_syncpt_irq(uint8_t syncpt_id);
-void host1x_clear_syncpts_irq_status(int cpu_id, uint32_t clear_mask);
+void host1x_clear_syncpts_irq_status(enum hcpu cpu_id, uint32_t clear_mask);
 void host1x_init_syncpts_irq(qemu_irq *irq);
-void host1x_reset_irqs(void);
+void host1x_reset_syncpt_irqs(void);
 
 #define INTSTATUS_OFFSET 0x0
 #define INTSTATUS_RESET  0x00000000

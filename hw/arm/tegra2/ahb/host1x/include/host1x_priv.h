@@ -31,4 +31,13 @@
         for (itr = 0; itr < size; itr++)    \
             if ((val >> itr) & 1)
 
+#define FOREACH_CPU(itr) \
+    for (itr = HOST1X_CPU; itr < HOST1X_CPUS_NB; itr++)
+
+enum hcpu {
+    HOST1X_CPU = 0,
+    HOST1X_COP,
+    HOST1X_CPUS_NB,
+};
+
 #endif // TEGRA_HOST1X_PRIV_H

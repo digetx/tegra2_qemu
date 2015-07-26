@@ -36,7 +36,7 @@ uint32_t host1x_sync_read_reg(uint32_t addr)
 
     switch (offset) {
     case INTSTATUS_OFFSET:
-        ret = host1x_get_sync_irq_status();
+        ret = host1x_get_syncpts_irq_status();
         break;
     case INTMASK_OFFSET:
         ret = host1x_get_modules_irq_mask();
@@ -62,10 +62,10 @@ uint32_t host1x_sync_read_reg(uint32_t addr)
         ret = host1x_get_syncpts_cop_irq_status();
         break;
     case SYNCPT_THRESH_INT_MASK_OFFSET:
-        ret = host1x_get_syncpts_dst_mask_high();
+        ret = host1x_get_syncpts_dst_mask_low();
         break;
     case SYNCPT_THRESH_INT_MASK_1_OFFSET:
-        ret = host1x_get_syncpts_dst_mask_low();
+        ret = host1x_get_syncpts_dst_mask_high();
         break;
     case SYNCPT_THRESH_INT_DISABLE_OFFSET:
         break;
@@ -257,11 +257,11 @@ void host1x_sync_write_reg(uint32_t addr, uint32_t value)
         break;
     case SYNCPT_THRESH_INT_MASK_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
-        host1x_set_syncpts_irq_dst_mask(value, 1);
+        host1x_set_syncpts_irq_dst_mask(0, value);
         break;
     case SYNCPT_THRESH_INT_MASK_1_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
-        host1x_set_syncpts_irq_dst_mask(value, 0);
+        host1x_set_syncpts_irq_dst_mask(1, value);
         break;
     case SYNCPT_THRESH_INT_DISABLE_OFFSET:
         TRACE_WRITE(base, offset, 0, value);
