@@ -13,7 +13,6 @@ obj-y += core/module/module.o
 
 obj-y += core/syncpts/irqs.o
 obj-y += core/syncpts/syncpts.o
-obj-y += core/syncpts/syncpts_pio.o
 obj-y += core/syncpts/waiters.o
 
 obj-y += grhost.o
