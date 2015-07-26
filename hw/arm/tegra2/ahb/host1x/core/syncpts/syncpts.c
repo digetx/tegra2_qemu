@@ -24,8 +24,8 @@
 #include "syncpts.h"
 
 enum stype {
-    CONTER_INCR,
-    CONTER_CHANGE,
+    COUNTER_INCR,
+    COUNTER_CHANGE,
     THRESHOLD_CHANGE,
 };
 
@@ -57,14 +57,14 @@ static void handle_syncpt_update(uint32_t id, enum stype op, uint32_t val)
     syncpt_lock(syncpt);
 
     switch (op) {
-    case CONTER_INCR:
+    case COUNTER_INCR:
         syncpt->counter++;
 
         QLIST_FOREACH_SAFE(waiter, &syncpt->waiters_incr, next, waiter_next) {
             host1x_unlock_syncpt_waiter(waiter);
         }
         break;
-    case CONTER_CHANGE:
+    case COUNTER_CHANGE:
         syncpt->counter = val;
         break;
     case THRESHOLD_CHANGE:
@@ -104,12 +104,12 @@ static void handle_base_update(uint32_t id, enum btype op, uint32_t val)
 
 void host1x_incr_syncpt(uint32_t syncpt_id)
 {
-    handle_syncpt_update(syncpt_id, CONTER_INCR, 0);
+    handle_syncpt_update(syncpt_id, COUNTER_INCR, 0);
 }
 
 void host1x_set_syncpt_count(uint32_t syncpt_id, uint32_t val)
 {
-    handle_syncpt_update(syncpt_id, CONTER_CHANGE, val);
+    handle_syncpt_update(syncpt_id, COUNTER_CHANGE, val);
 }
 
 void host1x_set_syncpt_threshold(uint32_t syncpt_id, uint32_t val)
