@@ -30,8 +30,8 @@
 
 #include "tegra_cpu_priv.h"
 
-// #undef TPRINT
-// #define TPRINT(...) {}
+#undef TPRINT
+#define TPRINT(...) {}
 
 static int tegra_A9_powergated;
 static int tegra_AVP_powergated;

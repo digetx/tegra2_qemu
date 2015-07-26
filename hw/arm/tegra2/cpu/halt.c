@@ -25,8 +25,8 @@
 
 #include "tegra_cpu_priv.h"
 
-// #undef TPRINT
-// #define TPRINT(...) {}
+#undef TPRINT
+#define TPRINT(...) {}
 
 static volatile int tcpu_halted[TEGRA2_NCPUS];
 
