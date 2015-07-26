@@ -23,6 +23,7 @@
 #include "iomap.h"
 
 #include "host1x_channel.h"
+#include "host1x_hwlock.h"
 #include "host1x_module.h"
 #include "host1x_priv.h"
 
@@ -86,11 +87,20 @@ static void tegra_grhost_priv_realize(DeviceState *dev, Error **errp)
         tegra_grhost_realize_subdev(&s->container, &s->channels[i], i * SZ_16K);
 }
 
+static void tegra_grhost_priv_reset(DeviceState *dev)
+{
+    host1x_reset_mlocks();
+    host1x_reset_hwlocks();
+    host1x_reset_syncpt_irqs();
+    host1x_reset_modules_irqs();
+}
+
 static void tegra_grhost_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
     dc->realize = tegra_grhost_priv_realize;
+    dc->reset = tegra_grhost_priv_reset;
 }
 
 static const TypeInfo tegra_grhost_info = {

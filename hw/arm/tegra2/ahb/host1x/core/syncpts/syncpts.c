@@ -20,7 +20,6 @@
 #include <assert.h>
 
 #include "host1x_syncpts.h"
-#include "host1x_hwlock.h"
 #include "syncpts.h"
 
 enum stype {
@@ -173,8 +172,6 @@ void host1x_reset_syncpts(void)
     for (i = 0; i < NV_HOST1X_SYNCPT_NB_BASES; i++) {
         syncpt_bases[i].base = 0;
     }
-
-    host1x_reset_hwlocks();
 }
 
 int host1x_syncpt_threshold_is_crossed(uint32_t syncpt_id)
