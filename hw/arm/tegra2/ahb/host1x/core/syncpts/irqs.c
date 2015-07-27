@@ -114,11 +114,18 @@ static void host1x_set_irq_status_bit(enum hcpu cpu_id, bool enable)
 
 void host1x_enable_syncpts_irq_mask(enum hcpu cpu_id, uint32_t enable_mask)
 {
+    enum hcpu cpu;
     unsigned i;
 
     lock_irqs();
 
-    syncpts_percpu_dst_mask[cpu_id] |= enable_mask;
+    FOREACH_CPU(cpu) {
+        if (cpu == cpu_id) {
+            syncpts_percpu_dst_mask[cpu] |= enable_mask;
+        } else {
+            syncpts_percpu_dst_mask[cpu] &= ~enable_mask;
+        }
+    }
 
     unlock_irqs();
 
