@@ -70,19 +70,20 @@ void tegra_a9mpcore_reset(void)
     tegra_device_reset(&a9mpcore->gtimer);
     tegra_device_reset(&a9mpcore->mptimer);
     tegra_device_reset(&a9mpcore->wdt);
+    /* FIXME: GIC reset is broken */
 //     device_reset( DEVICE(&a9mpcore->gic) );
 }
 
 void tegra_device_reset(void *dev_)
 {
     DeviceState *dev = DEVICE(dev_);
-    NamedGPIOList *ngl, *next;
-    int i;
+    SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
+    int i = 0;
 
-    device_reset( DEVICE(tegra_timer1_dev) );
+    device_reset(dev);
 
-    QLIST_FOREACH_SAFE(ngl, &dev->gpios, node, next) {
-        for (i = 0; i < ngl->num_in; i++)
-            qemu_irq_lower(ngl->in[i]);
+    while (sysbus_has_irq(sbd, i)) {
+        /* Clear the IRQ state.  */
+        qemu_irq_lower( sysbus_get_connected_irq(sbd, i++) );
     }
 }
