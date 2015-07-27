@@ -156,15 +156,10 @@ void host1x_set_syncpts_irq_dst_mask(int part, uint32_t mask)
 
 void host1x_clear_syncpts_irq_dst_mask(uint32_t clear_mask)
 {
-    CPUState *cs = current_cpu;
-
     lock_irqs();
 
-    if (cs->cpu_index == TEGRA2_COP) {
-        syncpts_percpu_dst_mask[HOST1X_COP] &= ~clear_mask;
-    } else {
-        syncpts_percpu_dst_mask[HOST1X_CPU] &= ~clear_mask;
-    }
+    syncpts_percpu_dst_mask[HOST1X_CPU] &= ~clear_mask;
+    syncpts_percpu_dst_mask[HOST1X_COP] &= ~clear_mask;
 
     unlock_irqs();
 }
