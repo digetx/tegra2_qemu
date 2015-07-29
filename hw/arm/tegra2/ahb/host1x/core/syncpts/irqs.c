@@ -145,7 +145,7 @@ void host1x_set_syncpts_irq_dst_mask(int part, uint32_t mask)
     lock_irqs();
 
     FOREACH_BIT_SET(mask, i, NV_HOST1X_SYNCPT_NB_PTS) {
-        cpu_id = (i & 0x55555555) ? HOST1X_CPU : HOST1X_COP;
+        cpu_id = ((1 << i) & 0x55555555) ? HOST1X_CPU : HOST1X_COP;
         dst_mask = 1 << ((i - cpu_id) / 2);
 
         syncpts_percpu_dst_mask[cpu_id] |= dst_mask << (part ? 16 : 0);
