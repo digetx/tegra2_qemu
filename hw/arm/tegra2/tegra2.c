@@ -46,66 +46,76 @@
 #define JMP_FIXUP   (sizeof(tegra_bootrom) / 4 - 2)
 
 static uint32_t tegra_bootmon[] = {
-    0xe3a00206, /* mov     r0, #1610612736 ; 0x60000000 */
-    0xe5901000, /* ldr     r1, [r0] */
-    0xe59f0054, /* ldr     r0, [pc, #84]   ; 0x64 */
-    0xe1500001, /* cmp     r0, r1 */
-    0x1a00000f, /* bne     0x54 */
-    0xee100fb0, /* mrc     15, 0, r0, cr0, cr0, {5} */
-    0xe200000f, /* and     r0, r0, #15 */
-    0xe3500000, /* cmp     r0, #0 */
-    0x0a00000b, /* beq     0x54 */
-    0xe59f303c, /* ldr     r3, [pc, #60]   ; 0x68 */
-    0xe5930000, /* ldr     r0, [r3] */
-    0xe3500001, /* cmp     r0, #1 */
-    0x1a000007, /* bne     0x54 */
-    0xe59f2030, /* ldr     r2, [pc, #48]   ; 0x6c */
-    0xe3a01001, /* mov     r1, #1 */
-    0xe5821000, /* str     r1, [r2] */
-    0xe3a010ff, /* mov     r1, #255,  */
-    0xe5821004, /* str     r1, [r2, #4] */
-    0xf57ff04f, /* dsb     sy */
-    0xe3a01001, /* mov     r1, #1 */
-    0xe5831000, /* str     r1, [r3] */
-    0xe59f0014, /* ldr     r0, [pc, #20]   ; 0x70 */
-    0xe5900000, /* ldr     r0, [r0] */
-    0xe12fff10, /* bx      r0 */
-    0x00000000, /* andeq   r0, r0, r1 */
-    0x55555555, /* ldrbpl  r5, [r5, #-1365], */
-    0x00000060, /* andeq   r0, r0, r0, rrx */
-    0x50041000, /* andpl   r1, r4, r0 */
-    0x6000f000, /* andvs   pc, r0, r0*/
+    0xe3a00206, /* ldr r0, =TEGRA_PG */
+    0xe5901000, /* ldr r1, [r0]] */
+    0xe59f0054, /* ldr r0, =TEGRA_PG_A9 */
+    0xe1500001, /* cmp r0, r1 */
+    0x1a00000f, /* bne boot         @ on AVP */
+    0xee100fb0, /* mrc 15, 0, r0, cr0, cr0, {5} */
+    0xe200000f, /* and r0, r0, #0xF */
+    0xe3500000, /* cmp r0, #0 */
+    0x0a00000b, /* beq boot */
+    0xe59f303c, /* ldr r3, =bootX */
+    0xe5930000, /* ldr r0, [r3] */
+    0xe3500001, /* cmp r0, #1 */
+    0x1a000007, /* bne boot */
+    0xe59f2030, /* ldr r2, =TEGRA_ARM_INT_DIST_BASE */
+    0xe3a01001, /* mov r1, #1 */
+    0xe5821000, /* str r1, [r2]         @ set GICC_CTLR.Enable */
+    0xe3a010ff, /* mov r1, #0xff */
+    0xe5821004, /* str r1, [r2, #4]     @ set GIC_PMR.Priority to 0xff */
+    0xf57ff04f, /* dsb */
+    0xe3a01001, /* mov r1, #1 */
+    0xe5831000, /* str r1, [r3] */
+/* boot: */
+    0xe59f0014, /* ldr r0, =TEGRA_EXCEPTION_VECTORS_BASE */
+    0xe5900000, /* ldr r0, [r0] */
+    0xe12fff10, /* bx  r0 */
+    0x00000000, /* bootX */
+    0x55555555, /* TEGRA_PG_A9 */
+    0x00000060, /* TEGRA_PG */
+    0x50041000, /* TEGRA_ARM_INT_DIST_BASE */
+    0x6000f000, /* TEGRA_EXCEPTION_VECTORS_BASE */
 };
 
 static uint32_t tegra_bootrom[] = {
-    0xea000006, /* b       0x20 */
-    0xea000007, /* b       0x28 */
-    0xea000008, /* b       0x30 */
-    0xea000009, /* b       0x38 */
-    0xea00000a, /* b       0x40 */
-    0xea00000b, /* b       0x48 */
-    0xea00000c, /* b       0x50 */
-    0xea00000d, /* b       0x58 */
-    0xe59f0044, /* ldr     r0, [pc, #68]   ; 0x6c */
-    0xe12fff10, /* bx      r0 */
-    0xe3a01001, /* mov     r1, #1 */
-    0xea00000a, /* b       0x5c */
-    0xe3a01002, /* mov     r1, #2 */
-    0xea000008, /* b       0x5c */
-    0xe3a01003, /* mov     r1, #3 */
-    0xea000006, /* b       0x5c */
-    0xe3a01004, /* mov     r1, #4 */
-    0xea000004, /* b       0x5c */
-    0xe3a01005, /* mov     r1, #5 */
-    0xea000002, /* b       0x5c */
-    0xe3a01006, /* mov     r1, #6 */
-    0xea000000, /* b       0x5c */
-    0xe3a01007, /* mov     r1, #7 */
-    0xe3a02010, /* mov     r2, #16 */
-    0xe59f0008, /* ldr     r0, [pc, #8]    ; 0x70 */
-    0xe5802000, /* str     r2, [r0] */
-    0xeafffffb, /* b       0x5c */
-    0xffffffff,
+    0xea000006, /* b reset_addr */
+    0xea000007, /* b undefined_addr */
+    0xea000008, /* b svc_addr */
+    0xea000009, /* b prefetch_addr */
+    0xea00000a, /* b abort_addr */
+    0xea00000b, /* b reserved_vector */
+    0xea00000c, /* b irq_addr */
+    0xea00000d, /* b fiq_handler */
+/* reset_addr: */
+    0xe59f0044, /* ldr r0, =DUMMY */
+    0xe12fff10, /* bx  r0 */
+/* undefined_addr: */
+    0xe3a01001, /* mov r1, #1 */
+    0xea00000a, /* b reboot */
+/* svc_addr: */
+    0xe3a01002, /* mov r1, #2 */
+    0xea000008, /* b reboot */
+/* prefetch_addr: */
+    0xe3a01003, /* mov r1, #3 */
+    0xea000006, /* b reboot */
+/* abort_addr: */
+    0xe3a01004, /* mov r1, #4 */
+    0xea000004, /* b reboot */
+/* reserved_vector: */
+    0xe3a01005, /* mov r1, #5 */
+    0xea000002, /* b reboot */
+/* irq_addr: */
+    0xe3a01006, /* mov r1, #6 */
+    0xea000000, /* b reboot */
+/* fiq_handler: */
+    0xe3a01007, /* mov r1, #7 */
+/* reboot: */
+    0xe3a02010, /* mov r2, #0x10 */
+    0xe59f0008, /* ldr r0, =TEGRA_PMC_BASE */
+    0xe5802000, /* str r2, [r0] */
+    0xeafffffb, /* b reboot */
+    0xffffffff, /* DUMMY */
     TEGRA_PMC_BASE,
 };
 
