@@ -111,8 +111,11 @@ void tegra_cpu_reset_assert(int cpu_id)
     tegra_cpu_stop(cpu_id);
     tcpu_in_reset[cpu_id] = 1;
 
-    if (tcg_enabled() && qemu_cpu_is_self(cs))
-        tcg_gen_exit_tb(0);
+    if (tcg_enabled() && qemu_cpu_is_self(cs)) {
+        if (tcg_ctx.gen_next_op_idx != OPC_BUF_SIZE) {
+            tcg_gen_exit_tb(0);
+        }
+    }
 }
 
 void tegra_cpu_reset_deassert(int cpu_id)
