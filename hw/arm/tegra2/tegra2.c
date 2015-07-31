@@ -42,6 +42,10 @@
 
 #define BOOTLOADER_BASE 0x108000
 #define BOOTROM_BASE    0xFFF00000
+#define BOOTMON_BASE    0xF0010000
+
+#define RW  0
+#define RO  1
 
 #define JMP_FIXUP   (sizeof(tegra_bootrom) / 4 - 2)
 
@@ -146,7 +150,7 @@ static void tegra2_create_cpus(void)
         object_property_set_bool(cpuobj, true, "realized", &error_abort);
     }
 
-    /* AVP */
+    /* AVP(COP) Audio Video Processor */
     cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, "arm7tdmi");
     assert(cpu_oc != NULL);
 
@@ -193,7 +197,7 @@ static void load_memory_images(MachineState *machine)
 
     /* Load boot monitor */
     rom_add_blob_fixed("bootmon", tegra_bootmon, sizeof(tegra_bootmon),
-                       0xf0010000);
+                       BOOTMON_BASE);
 
     if (machine->kernel_filename != NULL) {
         tmp = load_image_targphys(machine->kernel_filename, 0x1000000,
@@ -216,12 +220,24 @@ static void tegra2_init(MachineState *machine)
     /* Main RAM */
     assert(machine->ram_size <= TEGRA_DRAM_SIZE);
     memory_region_add_and_init_ram(sysmem, "tegra.dram",
-                                   TEGRA_DRAM_BASE, machine->ram_size, 0);
+                                   TEGRA_DRAM_BASE, machine->ram_size, RW);
 
     memory_region_add_and_init_ram(sysmem, "tegra.hi-vec",
-                                   0xffff0000, SZ_64K, 0);
+                                   0xffff0000, SZ_64K, RW);
+
     memory_region_add_and_init_ram(sysmem, "tegra.bootmon",
-                                   0xf0010000, TARGET_PAGE_SIZE, 1);
+                                   BOOTMON_BASE, TARGET_PAGE_SIZE, RO);
+
+    /* Internal static RAM */
+    memory_region_add_and_init_ram(sysmem, "tegra.iram",
+                                   TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, RW);
+
+    memory_region_add_and_init_ram(sysmem, "tegra.irom",
+                                   BOOTROM_BASE, 0xC000, RO);
+
+    /* Secure boot stub */
+    memory_region_add_and_init_ram(sysmem, "tegra.secure_boot",
+                                   TEGRA_SB_BASE, TEGRA_SB_SIZE, RW);
 
     /* Create the actual CPUs */
     tegra2_create_cpus();
@@ -266,20 +282,14 @@ static void tegra2_init(MachineState *machine)
     /* Cache controller */
     sysbus_create_simple("l2x0", TEGRA_ARM_PL310_BASE, NULL);
 
-    /* COP Internal RAM */
-    memory_region_add_and_init_ram(sysmem, "tegra.iram",
-                                   TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, 0);
-
-    memory_region_add_and_init_ram(sysmem, "tegra.irom", 0xfff00000, 0xC000, 1);
-
     /* Exception vectors */
     tegra_evp_dev = sysbus_create_simple("tegra.evp",
                                          TEGRA_EXCEPTION_VECTORS_BASE, NULL);
 
-    /* EMC controller */
+    /* Embedded memory controller */
     tegra_emc_dev = sysbus_create_simple("tegra.emc", TEGRA_EMC_BASE, NULL);
 
-    /* MC controller */
+    /* Memory controller */
     tegra_mc_dev = sysbus_create_simple("tegra.mc", TEGRA_MC_BASE, NULL);
 
     /* AHB Gizmo controller */
@@ -301,7 +311,7 @@ static void tegra2_init(MachineState *machine)
     tegra_car_dev = sysbus_create_simple("tegra.car",
                                          TEGRA_CLK_RESET_BASE, NULL);
 
-    /* Flow controller */
+    /* CPU Flow controller */
     tegra_flow_dev = sysbus_create_varargs("tegra.flow", TEGRA_FLOW_CTRL_BASE,
                                            DIRQ(INT_FLOW_RSM0),
                                            DIRQ(INT_FLOW_RSM1),
@@ -314,10 +324,10 @@ static void tegra2_init(MachineState *machine)
                                             DIRQ(INT_GPIO5), DIRQ(INT_GPIO6),
                                             DIRQ(INT_GPIO7), NULL);
 
-    /* PMC controller */
+    /* Power managment controller */
     tegra_pmc_dev = sysbus_create_simple("tegra.pmc", TEGRA_PMC_BASE, NULL);
 
-    /* RTC */
+    /* Real time clock */
     tegra_rtc_dev = sysbus_create_simple("tegra.rtc",
                                          TEGRA_RTC_BASE, DIRQ(INT_RTC));
 
@@ -357,10 +367,6 @@ static void tegra2_init(MachineState *machine)
                                      qemu_char_get_next_serial(),
                                      DEVICE_LITTLE_ENDIAN);
 
-    /* Secure boot stub */
-    memory_region_add_and_init_ram(sysmem, "tegra.secure_boot",
-                                   TEGRA_SB_BASE, TEGRA_SB_SIZE, 0);
-
     /* USB2 controllers */
     tegra_ehci1_dev = sysbus_create_simple(TYPE_TEGRA2_EHCI,
                                            TEGRA_USB_BASE, DIRQ(INT_USB));
@@ -393,7 +399,7 @@ static void tegra2_init(MachineState *machine)
     sysbus_mmio_map(SYS_BUS_DEVICE(tegra_dvc_dev), 0, TEGRA_DVC_BASE);
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_dvc_dev), 0, DIRQ(INT_DVC));
 
-    /* host1x CDMA and syncpts */
+    /* Host1x IO */
     tegra_grhost_dev = sysbus_create_varargs("tegra.grhost",
                                              TEGRA_GRHOST_BASE,
                                              DIRQ(INT_HOST1X_MPCORE_SYNCPT),
@@ -411,19 +417,20 @@ static void tegra2_init(MachineState *machine)
     tegra_dc1_dev = sysbus_create_simple("tegra.dc", TEGRA_DISPLAY_BASE,
                                          DIRQ(INT_DISPLAY_GENERAL));
 
-    /* PG tag */
+    /* Process generator tag */
     sysbus_create_simple("tegra.pg", 0x60000000, NULL);
 
     /* PIO ethernet */
     if (nd_table[0].used)
         lan9118_init(&nd_table[0], 0xA0000000, DIRQ(INT_SW_RESERVED));
 
-    /* Arbitration */
+    /* Multi CPU shared resources access arbitration */
     tegra_arb_sema_dev = sysbus_create_varargs("tegra.arb_sema",
                                                TEGRA_ARB_SEMA_BASE,
                                                DIRQ(INT_GNT_0),
                                                DIRQ(INT_GNT_1),
                                                NULL);
+
     load_memory_images(machine);
 
     tegra_cpu_reset_init();
