@@ -37,8 +37,6 @@
 /* FIXME */
 static uint64_t reset_time;
 
-static QemuMutex trace_mutex;
-
 #define PACKET_TRACE_RW 0x11111111
 struct __attribute__((packed, aligned(1))) trace_pkt_rw {
     uint32_t magic;
@@ -87,16 +85,12 @@ static int trace_write_socket(void *data, int size)
     if (msgsock < 0)
         return 0;
 
-    qemu_mutex_lock(&trace_mutex);
-
     while (write(msgsock, data, size) < 0) {
         if (errno != EINTR) {
             perror("writing on stream socket");
             break;
         }
     }
-
-    qemu_mutex_unlock(&trace_mutex);
 
     return 1;
 }
@@ -215,8 +209,6 @@ void tegra_trace_init(void)
 
     if (msgsock != -1)
         close(msgsock);
-
-    qemu_mutex_init(&trace_mutex);
 
     setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
 
