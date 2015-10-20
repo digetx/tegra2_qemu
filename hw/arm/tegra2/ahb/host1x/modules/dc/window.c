@@ -161,6 +161,29 @@ uint32_t read_window(display_window *win, uint32_t offset, int st)
     return 0;
 }
 
+static void update_window_surface(display_window *win)
+{
+    uint32_t starting_address = 0;
+
+    starting_address += win->regs_active.winbuf_start_addr.reg32;
+
+//     starting_address += win->regs_active.win_buf_stride.reg32 * buf_index;
+
+    starting_address += win->regs_active.winbuf_start_addr_v.reg32 * \
+                        win->regs_active.win_line_stride.line_stride;
+
+    starting_address += win->regs_active.winbuf_addr_h_offset.reg32;
+
+    qemu_free_displaysurface(win->surface);
+
+    win->surface = qemu_create_displaysurface_guestmem(
+            win->regs_active.win_size.h_size,
+            win->regs_active.win_size.v_size,
+tegra_dc_to_pixman(win->regs_active.win_color_depth.color_depth),
+            win->regs_active.win_line_stride.line_stride,
+            starting_address);
+}
+
 void write_window(display_window *win, uint32_t offset, uint32_t value, int st)
 {
     win_regs *regs;
@@ -181,6 +204,17 @@ void write_window(display_window *win, uint32_t offset, uint32_t value, int st)
     if (OFFSET_IN_RANGE(offset, win_common_handler)) {
         if (st == ACTIVE) {
             win_common_handler.write(&win->regs_active, offset, value);
+
+            switch (offset) {
+            case WINBUF_START_ADDR_OFFSET:
+//             case WIN_BUF_STRIDE_OFFSET:
+            case WINBUF_START_ADDR_V_OFFSET:
+            case WINBUF_ADDR_H_OFFSET_OFFSET:
+                update_window_surface(win);
+                break;
+            default:
+                break;
+            }
         } else {
             win_common_handler.write(&win->regs_assembly, offset, value);
         }
@@ -198,14 +232,7 @@ void latch_window_assembly(display_window *win)
         memcpy(regs->active, regs->assembly, regs->regs_sz);
     }
 
-    qemu_free_displaysurface(win->surface);
-
-    win->surface = qemu_create_displaysurface_guestmem(
-            win->regs_active.win_size.h_size,
-            win->regs_active.win_size.v_size,
-tegra_dc_to_pixman(win->regs_active.win_color_depth.color_depth),
-            win->regs_active.win_line_stride.line_stride,
-            win->regs_active.winbuf_start_addr.reg32);
+    update_window_surface(win);
 }
 
 void init_window(display_window *win, int caps)
