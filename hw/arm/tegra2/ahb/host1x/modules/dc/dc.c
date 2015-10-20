@@ -179,7 +179,7 @@ static const MemoryRegionOps tegra_dc_mem_ops = {
 
 static void tegra_dc_compose_window(QemuConsole *console, display_window *win)
 {
-    if (!win->regs_active.win_options.win_enable)
+    if (!win->regs_active.win_options.win_enable || !win->surface)
         return;
 
     pixman_image_composite(PIXMAN_OP_SRC,
