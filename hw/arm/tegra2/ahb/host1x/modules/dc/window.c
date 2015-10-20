@@ -215,9 +215,9 @@ void write_window(display_window *win, uint32_t offset, uint32_t value, int st)
             default:
                 break;
             }
-        } else {
-            win_common_handler.write(&win->regs_assembly, offset, value);
         }
+
+        win_common_handler.write(&win->regs_assembly, offset, value);
     }
 }
 
