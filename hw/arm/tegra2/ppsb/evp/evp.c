@@ -17,12 +17,15 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "hw/arm/arm.h"
 #include "hw/sysbus.h"
 
-#include "evp.h"
+#include "devices.h"
 #include "iomap.h"
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
+
+#include "evp.h"
 
 #define TYPE_TEGRA_EVP "tegra.evp"
 #define TEGRA_EVP(obj) OBJECT_CHECK(tegra_evp, (obj), TYPE_TEGRA_EVP)
@@ -167,9 +170,47 @@ static const MemoryRegionOps tegra_evp_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
+static void tegra_cpu_do_interrupt(CPUState *cs)
+{
+    ARMCPU *cpu = ARM_CPU(cs);
+    CPUARMState *env = &cpu->env;
+    tegra_evp *s = tegra_evp_dev;
+    uint32_t irq_vector_addr;
+
+    arm_cpu_do_interrupt(cs);
+
+    switch (cs->exception_index) {
+    case EXCP_UDEF:
+        irq_vector_addr = s->evp_regs[1][1];
+        break;
+    case EXCP_SWI:
+    case EXCP_SMC:
+        irq_vector_addr = s->evp_regs[1][2];
+        break;
+    case EXCP_PREFETCH_ABORT:
+        irq_vector_addr = s->evp_regs[1][3];
+        break;
+    case EXCP_DATA_ABORT:
+        irq_vector_addr = s->evp_regs[1][4];
+        break;
+    case EXCP_IRQ:
+        irq_vector_addr = s->evp_regs[1][6];
+        break;
+    case EXCP_FIQ:
+        irq_vector_addr = s->evp_regs[1][7];
+        break;
+    default:
+        return;
+    }
+
+    env->regs[15] = irq_vector_addr;
+}
+
 static int tegra_evp_priv_init(SysBusDevice *dev)
 {
     tegra_evp *s = TEGRA_EVP(dev);
+    CPUState *cs = qemu_get_cpu(TEGRA2_COP);
+    CPUClass *cc = CPU_GET_CLASS(cs);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_evp_mem_ops, s,
                           "tegra.evp", TEGRA_EXCEPTION_VECTORS_SIZE);
@@ -177,6 +218,9 @@ static int tegra_evp_priv_init(SysBusDevice *dev)
 
     /* FIXME: lame */
     device_reset( DEVICE(s) );
+
+    /* COP follows all EVP vectors.  */
+    cc->do_interrupt = tegra_cpu_do_interrupt;
 
     return 0;
 }
