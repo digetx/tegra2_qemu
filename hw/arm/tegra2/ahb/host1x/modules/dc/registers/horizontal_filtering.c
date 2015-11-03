@@ -30,7 +30,7 @@ static uint32_t h_filter_read(void *regs, uint32_t offset)
 
     switch (offset) {
     case WINC_H_FILTER_P00_OFFSET ... WINC_H_FILTER_OFFSET_END:
-        ret = hf->winc_h_filter_p[(offset & 0xf) - 1].reg32;
+        ret = hf->winc_h_filter_p[(offset - 1) & 0xf].reg32;
         break;
     default:
         g_assert_not_reached();
@@ -45,7 +45,7 @@ static void h_filter_write(void *regs, uint32_t offset, uint32_t value)
 
     switch (offset) {
     case WINC_H_FILTER_P00_OFFSET ... WINC_H_FILTER_OFFSET_END:
-        hf->winc_h_filter_p[(offset & 0xf) - 1].reg32 = value;
+        hf->winc_h_filter_p[(offset - 1) & 0xf].reg32 = value;
         break;
     default:
         g_assert_not_reached();

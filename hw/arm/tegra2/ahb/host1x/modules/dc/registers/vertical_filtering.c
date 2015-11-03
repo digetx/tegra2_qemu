@@ -30,7 +30,7 @@ static uint32_t v_filter_read(void *regs, uint32_t offset)
 
     switch (offset) {
     case WINC_V_FILTER_P00_OFFSET ... WINC_V_FILTER_OFFSET_END:
-        ret = vf->winc_v_filter_p[(offset & 0xf) - 1].reg32;
+        ret = vf->winc_v_filter_p[(offset - 1) & 0xf].reg32;
         break;
     default:
         g_assert_not_reached();
@@ -45,7 +45,7 @@ static void v_filter_write(void *regs, uint32_t offset, uint32_t value)
 
     switch (offset) {
     case WINC_V_FILTER_P00_OFFSET ... WINC_V_FILTER_OFFSET_END:
-        vf->winc_v_filter_p[(offset & 0xf) - 1].reg32 = value;
+        vf->winc_v_filter_p[(offset - 1) & 0xf].reg32 = value;
         break;
     default:
         g_assert_not_reached();
@@ -66,6 +66,6 @@ regs_io_handler v_filter_handler = {
     .read  = v_filter_read,
     .write = v_filter_write,
     .reset = v_filter_reset,
-    .begin = 0x601,
-    .end   = 0x610,
+    .begin = 0x619,
+    .end   = 0x628,
 };
