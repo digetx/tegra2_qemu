@@ -256,7 +256,14 @@ void reset_window(display_window *win)
 
     QLIST_FOREACH(regs, &win->regs_list, next) {
         if (regs->io_handler.reset != NULL) {
-            regs->io_handler.reset(regs);
+            switch (regs->shadow_type) {
+            case ARMED:
+//                 regs->armed = g_malloc(regs_sz);
+            case ASSEMBLY:
+                regs->io_handler.reset(regs->assembly);
+            case ACTIVE:
+                regs->io_handler.reset(regs->active);
+            };
         }
     }
 
