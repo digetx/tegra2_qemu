@@ -237,12 +237,16 @@ void latch_window_assembly(display_window *win)
 
 void init_window(display_window *win, int caps)
 {
+    win_regs *regs;
     int cap;
 
     win->caps = caps;
 
+    memset(win, 0, sizeof(display_window));
+
     FOREACH_BIT_SET(caps, cap, CAPS_NB) {
-        QLIST_INSERT_HEAD(&win->regs_list, alloc_regs(cap), next);
+        regs = alloc_regs(cap);
+        QLIST_INSERT_HEAD(&win->regs_list, regs, next);
     }
 }
 
