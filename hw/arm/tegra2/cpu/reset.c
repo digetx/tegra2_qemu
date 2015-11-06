@@ -126,10 +126,11 @@ void tegra_cpu_reset_deassert(int cpu_id)
     TPRINT("%s cpu %d tcpu_in_reset: %d\n",
            __func__, cpu_id, tcpu_in_reset[cpu_id]);
 
+    tcpu_in_reset[cpu_id] = 0;
+
     if (!cpu->powered_off)
         return;
 
-    tcpu_in_reset[cpu_id] = 0;
     tegra_cpu_run(cpu_id);
 }
 
