@@ -980,6 +980,11 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
     case RST_DEV_L_SET_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_l_set.reg32, value);
         s->rst_dev_l_set.reg32 = value;
+
+        if (s->rst_dev_l_set.set_cop_rst) {
+            tegra_cpu_reset_assert(TEGRA2_COP);
+        }
+
         break;
     case RST_DEV_L_CLR_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_l_clr.reg32, value);
@@ -997,6 +1002,10 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
         if (s->rst_dev_l_set.set_gpio_rst & s->rst_dev_l_clr.clr_gpio_rst) {
             TPRINT("car: resetting gpio\n");
             tegra_device_reset( DEVICE(tegra_gpios_dev) );
+        }
+
+        if (s->rst_dev_l_clr.clr_cop_rst) {
+            tegra_cpu_reset_deassert(TEGRA2_COP);
         }
 
         s->rst_dev_l_set.reg32 &= ~s->rst_dev_l_clr.reg32;
