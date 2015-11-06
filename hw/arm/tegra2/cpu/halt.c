@@ -55,6 +55,9 @@ void tegra_cpu_run(int cpu_id)
     if (tcpu_halted[cpu_id])
         return;
 
+    if (tegra_cpu_reset_asserted(cpu_id))
+        return;
+
     cpu_reset_interrupt(cs, CPU_INTERRUPT_HALT);
     cs->exception_index = -1;
     cs->halted = cpu->powered_off = 0;
