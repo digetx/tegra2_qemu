@@ -443,6 +443,9 @@ static void tegra2_init(MachineState *machine)
                                                DIRQ(INT_GNT_1),
                                                NULL);
 
+    /* AVP cache control */
+    tegra_cch_dev = sysbus_create_simple("tegra.cch", 0xF0000000, NULL);
+
     /* COP's address map differs a bit from A9.  */
     memory_region_init(cop_sysmem, NULL, "tegra.cop-memory", UINT64_MAX);
     address_space_init(cop_as, cop_sysmem, "tegra.cop-address space");
@@ -453,7 +456,7 @@ static void tegra2_init(MachineState *machine)
     memory_region_add_and_init_ram(cop_sysmem, "tegra.cop-hi-vec",
                                    0xffff0000, SZ_64K, RW);
 
-    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-DRAM + IRAM", sysmem,
+    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-DRAM", sysmem,
                                 0x00000040,
                                 0x00000040, TEGRA_DRAM_SIZE - 0x40);
 
@@ -496,6 +499,10 @@ static void tegra2_init(MachineState *machine)
     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-bootmon", sysmem,
                                 BOOTMON_BASE,
                                 BOOTMON_BASE, TARGET_PAGE_SIZE);
+
+    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-cch", sysmem,
+                                0xF0000000,
+                                0xF0000000, SZ_64K);
 
     cs = qemu_get_cpu(TEGRA2_COP);
     cs->as = cop_as;

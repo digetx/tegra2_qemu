@@ -5682,6 +5682,10 @@ static inline int get_phys_addr(CPUARMState *env, target_ulong address,
 
     if (regime_translation_disabled(env, mmu_idx)) {
         /* MMU/MPU disabled.  */
+        ARMCPU *cpu = arm_env_get_cpu(env);
+        if (cpu->translate_addr) {
+            address = cpu->translate_addr(address, access_type);
+        }
         *phys_ptr = address;
         *prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
         *page_size = TARGET_PAGE_SIZE;

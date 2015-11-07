@@ -27,6 +27,7 @@ obj-y += apb/rtc/rtc.o
 obj-y += apb/uart/uart.o
 
 obj-y += cpu/arm_op.o
+obj-y += cpu/cop_cch.o
 obj-y += cpu/halt.o
 obj-y += cpu/reset.o
 
