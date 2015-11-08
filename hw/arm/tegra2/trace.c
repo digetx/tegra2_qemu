@@ -30,12 +30,15 @@
 #include <sysemu/sysemu.h>
 #include "qemu/thread.h"
 
+#include "ahb/host1x/include/host1x_cdma.h"
 #include "tegra_trace.h"
 
 #define SOCKET_FILE     "/tmp/trace.sock"
 
 /* FIXME */
 static uint64_t reset_time;
+
+#define HOST1X_CDMA	0x1010
 
 #define PACKET_TRACE_RW 0x11111111
 struct __attribute__((packed, aligned(1))) trace_pkt_rw {
@@ -149,7 +152,7 @@ void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
     ARMCPU *cpu = ARM_CPU(cs);
     uint32_t cpu_pc = cpu ? cpu->env.regs[15] : 0;
     uint32_t time = qemu_clock_get_us(QEMU_CLOCK_VIRTUAL);
-    uint32_t cpu_id = cs ? cs->cpu_index : 0xFF;
+    uint32_t cpu_id = host1x_cdma_ptr ? HOST1X_CDMA : (cs ? cs->cpu_index : 0xFF);
     struct trace_pkt_rw W = {
         htonl(PACKET_TRACE_RW),
         htonl(hwaddr),
