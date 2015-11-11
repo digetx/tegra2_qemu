@@ -30,7 +30,7 @@
 #define DEFINE_REG32(reg) reg##_t reg
 #define WR_MASKED(r, d, m)  r = (r & ~m##_WRMASK) | (d & m##_WRMASK)
 
-#define SCALE(val) (val)
+#define SCALE	1
 
 typedef struct tegra_timer_state {
     SysBusDevice parent_obj;
@@ -112,7 +112,7 @@ static void tegra_timer_priv_write(void *opaque, hwaddr offset,
 
         assert((s->ptv.tmr_ptv && s->ptv.per) || !s->ptv.per);
 
-        ptimer_set_limit(s->ptimer, SCALE(s->ptv.tmr_ptv + 1), 1);
+        ptimer_set_limit(s->ptimer, s->ptv.tmr_ptv + 1, 1);
         ptimer_run(s->ptimer, !s->ptv.per);
         break;
     case PCR_OFFSET:
@@ -157,7 +157,7 @@ static int tegra_timer_priv_init(SysBusDevice *dev)
     sysbus_init_mmio(dev, &s->iomem);
 
     s->ptimer = ptimer_init(bh);
-    ptimer_set_freq(s->ptimer, 1000000);
+    ptimer_set_freq(s->ptimer, 1000000 * SCALE);
 
     return 0;
 }
