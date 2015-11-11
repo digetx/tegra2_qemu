@@ -91,6 +91,8 @@ static int trace_write_socket(void *data, int size)
     while (write(msgsock, data, size) < 0) {
         if (errno != EINTR) {
             perror("writing on stream socket");
+            close(msgsock);
+            msgsock = -1;
             break;
         }
     }
