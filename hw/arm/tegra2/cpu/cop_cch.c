@@ -157,7 +157,7 @@ static hwaddr tegra_cch_translate(hwaddr addr, int access_type)
         return addr;
     }
 
-    addr &= 0x000FFFFF;
+    addr &= ~s->translate_mask;
     addr |= (s->translate_phys_base & s->translate_mask) << 16;
     addr += 0x80000000;
 
