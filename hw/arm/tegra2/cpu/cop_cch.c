@@ -94,7 +94,7 @@ static uint64_t tegra_cch_priv_read(void *opaque, hwaddr offset,
 
 static void tegra_cch_refill_tlb(tegra_cch *s)
 {
-    const hwaddr phys_base = s->translate_phys_base & 0x3FFF;
+    const hwaddr phys_base = s->translate_phys_base;
     const hwaddr virt_base = s->translate_virt_base & s->translate_mask;
 
     tlb_flush(current_cpu, 1);
@@ -141,14 +141,14 @@ static void tegra_cch_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(s->iomem.addr, offset, old, value);
 
         s->translate_virt_base = value >> 16;
-        s->translate_mask = value & 0xFFFF;
+        s->translate_mask = value & 0x3FFF;
         break;
     case PTE0_TRANSLATE:
         old = (s->translate_phys_base << 16) | s->translate_flags;
 
         TRACE_WRITE(s->iomem.addr, offset, old, value);
 
-        s->translate_phys_base = value >> 16;
+        s->translate_phys_base = (value >> 16) & 0x3FFF;
         s->translate_flags = value & 0xFFF;
         break;
     default:
@@ -178,7 +178,7 @@ static const MemoryRegionOps tegra_cch_mem_ops = {
 static hwaddr tegra_cch_translate(hwaddr addr, int access_type)
 {
     tegra_cch *s = tegra_cch_dev;
-    const hwaddr phys_base = s->translate_phys_base & 0x3FFF;
+    const hwaddr phys_base = s->translate_phys_base;
     const hwaddr virt_base = s->translate_virt_base & s->translate_mask;
 
     if (!(s->translate_flags & TRANSLATE_EN)) {
