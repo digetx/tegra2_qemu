@@ -210,6 +210,9 @@ static void tegra_cpu_do_interrupt(CPUState *cs)
     }
 
     env->regs[15] = irq_vector_addr;
+
+    /* ARM720T switches to arm mode.  */
+    env->thumb = 0;
 }
 
 static int tegra_evp_priv_init(SysBusDevice *dev)
