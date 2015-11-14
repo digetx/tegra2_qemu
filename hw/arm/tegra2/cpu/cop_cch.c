@@ -20,6 +20,8 @@
 #include "hw/arm/arm.h"
 #include "hw/sysbus.h"
 
+#include "tcg-op.h"
+
 #include "devices.h"
 #include "sizes.h"
 #include "tegra_cpu.h"
@@ -90,6 +92,36 @@ static uint64_t tegra_cch_priv_read(void *opaque, hwaddr offset,
     return ret;
 }
 
+static void tegra_cch_refill_tlb(tegra_cch *s)
+{
+    const hwaddr phys_base = s->translate_phys_base & 0x3FFF;
+    const hwaddr virt_base = s->translate_virt_base & s->translate_mask;
+
+    tlb_flush(current_cpu, 1);
+
+    if (!(s->translate_flags & TRANSLATE_EN)) {
+        goto FIN;
+    }
+
+    /* Too much churn to implement correctly.  */
+    g_assert(s->translate_flags & TRANSLATE_DATA);
+    g_assert(s->translate_flags & TRANSLATE_HIT);
+    g_assert(s->translate_flags & TRANSLATE_RD);
+    g_assert(s->translate_flags & TRANSLATE_WR);
+    g_assert(s->translate_flags & TRANSLATE_CODE);
+
+    /* ??? Locking "no-MMU" mode might be better.  */
+    tlb_set_page(current_cpu, virt_base << 16, 0x80000000 | (phys_base << 16),
+                 PAGE_BITS, ARMMMUIdx_S12NSE1, SZ_1M);
+
+FIN:
+    if (tcg_enabled()) {
+        if (tcg_ctx.gen_next_op_idx != OPC_BUF_SIZE) {
+            tcg_gen_exit_tb(0);
+        }
+    }
+}
+
 static void tegra_cch_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
@@ -116,13 +148,15 @@ static void tegra_cch_priv_write(void *opaque, hwaddr offset,
 
         TRACE_WRITE(s->iomem.addr, offset, old, value);
 
-        s->translate_phys_base = (value >> 16) & 0x3FFF;
+        s->translate_phys_base = value >> 16;
         s->translate_flags = value & 0xFFF;
         break;
     default:
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
-        break;
+        return;
     }
+
+    tegra_cch_refill_tlb(s);
 }
 
 static void tegra_cch_priv_reset(DeviceState *dev)
@@ -144,22 +178,19 @@ static const MemoryRegionOps tegra_cch_mem_ops = {
 static hwaddr tegra_cch_translate(hwaddr addr, int access_type)
 {
     tegra_cch *s = tegra_cch_dev;
+    const hwaddr phys_base = s->translate_phys_base & 0x3FFF;
+    const hwaddr virt_base = s->translate_virt_base & s->translate_mask;
 
     if (!(s->translate_flags & TRANSLATE_EN)) {
         return addr;
     }
 
-    if (!((1 << access_type) & (s->translate_flags >> 8))) {
+    if ((addr >> 16) != virt_base) {
         return addr;
     }
 
-    if ((addr >> 16) != s->translate_virt_base) {
-        return addr;
-    }
-
-    addr &= ~s->translate_mask;
-    addr |= (s->translate_phys_base & s->translate_mask) << 16;
-    addr += 0x80000000;
+    addr &= 0x0000FFFF;
+    addr |= 0x80000000 | (phys_base << 16);
 
     return addr;
 }
