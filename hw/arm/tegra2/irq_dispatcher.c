@@ -100,7 +100,7 @@ static void tegra_irq_dispatcher_set_cpu_irq_lic(void *opaque, int irq, int leve
 static void tegra_irq_dispatcher_set_cop_irq_lic(void *opaque, int irq, int level)
 {
     tegra_irq_dispatcher *s = TEGRA_IRQ_DISPATCHER(opaque);
-    int irq_type = irq & 4;
+    int irq_type = irq & 1;
 
 //     TPRINT("%s irq=%d type=%s lvl=%d\n",
 //            __func__, irq, irq_type ? "FIQ":"IRQ", level);
