@@ -19,6 +19,7 @@
 
 #include "hw/arm/arm.h"
 #include "hw/sysbus.h"
+#include "sysemu/sysemu.h"
 
 #include "devices.h"
 #include "iomap.h"
@@ -184,6 +185,11 @@ static void tegra_cpu_do_interrupt(CPUState *cs)
         irq_vector_addr = s->evp_regs[1][1];
         break;
     case EXCP_SWI:
+        if (semihosting_enabled) {
+            if (env->regs[15] != 0x08 && env->regs[15] != 0xFFFF0008) {
+                return;
+            }
+        }
     case EXCP_SMC:
         irq_vector_addr = s->evp_regs[1][2];
         break;
