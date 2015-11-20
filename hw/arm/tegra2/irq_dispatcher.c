@@ -91,10 +91,11 @@ static void tegra_irq_dispatcher_set_cpu_irq_lic(void *opaque, int irq, int leve
 //     TPRINT("%s irq=%d type=%s lvl=%d\n",
 //            __func__, irq, irq_type ? "FIQ":"IRQ", level);
 
-    qemu_set_irq(s->cpu_irqs[TEGRA2_A9_CORE0][irq_type], level);
+    if (level) {
+        tegra_flow_on_irq(TEGRA2_A9_CORE0);
+    }
 
-    if (level)
-        tegra_flow_on_irq();
+    qemu_set_irq(s->cpu_irqs[TEGRA2_A9_CORE0][irq_type], level);
 }
 
 static void tegra_irq_dispatcher_set_cop_irq_lic(void *opaque, int irq, int level)
@@ -104,6 +105,9 @@ static void tegra_irq_dispatcher_set_cop_irq_lic(void *opaque, int irq, int leve
 
 //     TPRINT("%s irq=%d type=%s lvl=%d\n",
 //            __func__, irq, irq_type ? "FIQ":"IRQ", level);
+
+    if (level)
+        tegra_flow_on_irq(TEGRA2_COP);
 
     qemu_set_irq(s->cop_irqs[irq_type], level);
 }

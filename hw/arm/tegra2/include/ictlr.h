@@ -51,7 +51,7 @@ typedef struct tegra_ictlr_state {
     uint32_t cop_iep_class[4];
 } tegra_ictlr;
 
-void tegra_flow_on_irq(void);
+void tegra_flow_on_irq(int cpu_id);
 int tegra_ictlr_is_irq_pending_on_cpu(int cpu_id);
 
 #define ICTLR_VIRQ_CPU_OFFSET 0x0
