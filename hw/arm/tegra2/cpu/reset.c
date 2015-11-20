@@ -21,8 +21,6 @@
 #include "hw/arm/arm.h"
 #include "sysemu/sysemu.h"
 
-#include "tcg-op.h"
-
 #include "devices.h"
 #include "iomap.h"
 #include "tegra_cpu.h"
@@ -71,6 +69,15 @@ static void tegra_cpu_pwrgate_reset(void *opaque)
     tegra_cpu_hlt_clr();
 }
 
+static void tegra_reset_cpu_state(CPUState *cs)
+{
+    ARMCPU *cpu = ARM_CPU(cs);
+
+    cpu_reset(cs);
+    cpu->env.thumb = 0;
+    CPU_GET_CLASS(cpu)->set_pc(cs, 0xf0010000);
+}
+
 static void tegra_do_cpu_reset(void *opaque)
 {
     CPUState *cs = opaque;
@@ -78,7 +85,8 @@ static void tegra_do_cpu_reset(void *opaque)
 
     assert(cpu_id < TEGRA2_NCPUS);
 
-    tegra_cpu_reset_assert(cpu_id);
+    tegra_reset_cpu_state(cs);
+    tcpu_in_reset[cpu_id] = 1;
 }
 
 void tegra_cpu_reset_init(void)
@@ -98,24 +106,11 @@ int tegra_cpu_reset_asserted(int cpu_id)
 
 void tegra_cpu_reset_assert(int cpu_id)
 {
-    CPUState *cs = qemu_get_cpu(cpu_id);
-    ARMCPU *cpu = ARM_CPU(cs);
-
     TPRINT("%s cpu %d tcpu_in_reset: %d\n",
            __func__, cpu_id, tcpu_in_reset[cpu_id]);
 
-    cpu_reset(cs);
-    cpu->env.thumb = 0;
-    CPU_GET_CLASS(cpu)->set_pc(cs, 0xf0010000);
-
     tegra_cpu_stop(cpu_id);
     tcpu_in_reset[cpu_id] = 1;
-
-    if (tcg_enabled() && qemu_cpu_is_self(cs)) {
-        if (tcg_ctx.gen_next_op_idx != OPC_BUF_SIZE) {
-            tcg_gen_exit_tb(0);
-        }
-    }
 }
 
 void tegra_cpu_reset_deassert(int cpu_id)
@@ -126,31 +121,34 @@ void tegra_cpu_reset_deassert(int cpu_id)
     TPRINT("%s cpu %d tcpu_in_reset: %d\n",
            __func__, cpu_id, tcpu_in_reset[cpu_id]);
 
-    tcpu_in_reset[cpu_id] = 0;
+    if (!tcpu_in_reset[cpu_id]) {
+        return;
+    }
 
     if (!cpu->powered_off)
         return;
 
+    if (tcpu_in_reset[cpu_id]) {
+        tegra_reset_cpu_state(cs);
+    }
+
+    tcpu_in_reset[cpu_id] = 0;
     tegra_cpu_run(cpu_id);
 }
 
 int tegra_cpu_is_powergated(int cpu_id)
 {
-    int ret;
-
     switch (cpu_id) {
     case TEGRA2_A9_CORE0:
     case TEGRA2_A9_CORE1:
-        ret = tegra_A9_powergated;
-        break;
+        return tegra_A9_powergated;
     case TEGRA2_COP:
-        ret = tegra_AVP_powergated;
-        break;
+        return tegra_AVP_powergated;
     default:
         g_assert_not_reached();
     }
 
-    return ret;
+    return 0;
 }
 
 static void tegra_cpu_powergateA9(void)
