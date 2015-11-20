@@ -120,26 +120,12 @@ static void tegra_ictlr_update_irqs(tegra_ictlr *s)
 static void tegra_ictlr_irq_handler(void *opaque, int irq, int level)
 {
     tegra_ictlr *s = opaque;
-    int irq_mask;
-    int bank = 0;
+    int irq_mask = 1 << (irq & 0x1F);
+    int bank = irq >> 5;
 
 //     TPRINT("%s: irq %d level %d\n", __func__, irq, level);
 
     assert(irq < INT_MAIN_NR);
-
-    switch (irq) {
-    case 32 ... 63:
-        bank = 1;
-        break;
-    case 64 ... 95:
-        bank = 2;
-        break;
-    case 96 ... 127:
-        bank = 3;
-        break;
-    }
-
-    irq_mask = (1 << (irq - bank * 32));
 
     if (level)
         s->isr[bank] |= irq_mask;
