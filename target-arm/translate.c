@@ -4124,6 +4124,9 @@ static void gen_nop_hint(DisasContext *s, int val)
         s->is_jmp = DISAS_WFE;
         break;
     case 4: /* sev */
+        gen_set_pc_im(s, s->pc);
+        s->is_jmp = DISAS_SEV;
+        break;
     case 5: /* sevl */
         /* TODO: Implement SEV, SEVL and WFE.  May help SMP performance.  */
     default: /* nop */
@@ -11560,6 +11563,9 @@ void gen_intermediate_code(CPUARMState *env, TranslationBlock *tb)
             break;
         case DISAS_YIELD:
             gen_helper_yield(cpu_env);
+            break;
+        case DISAS_SEV:
+            gen_helper_sev(cpu_env);
             break;
         case DISAS_SWI:
             gen_exception(EXCP_SWI, syn_aa32_svc(dc->svc_imm, dc->thumb),

@@ -26,6 +26,7 @@ typedef enum {
     IF_IDE = 0,
     IF_NONE,
     IF_SCSI, IF_FLOPPY, IF_PFLASH, IF_MTD, IF_SD, IF_VIRTIO, IF_XEN,
+    IF_EMMC,
     IF_COUNT
 } BlockInterfaceType;
 

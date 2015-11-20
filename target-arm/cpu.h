@@ -912,6 +912,8 @@ enum arm_features {
     ARM_FEATURE_V8_SHA256, /* implements SHA256 part of v8 Crypto Extensions */
     ARM_FEATURE_V8_PMULL, /* implements PMULL part of v8 Crypto Extensions */
     ARM_FEATURE_THUMB_DSP, /* DSP insns supported in the Thumb encodings */
+    ARM_FEATURE_NOCP15, /* ARM7TDMI, ARM7TDMI-S, ARM7EJ-S, and ARM9TDMI cores do not have a CP15 */
+    ARM_FEATURE_ABORT_BU, /* base updated abort model, e.g. ARMxTDMI */
 };
 
 static inline int arm_feature(CPUARMState *env, int feature)

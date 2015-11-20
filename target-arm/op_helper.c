@@ -307,7 +307,7 @@ static inline int check_wfx_trap(CPUARMState *env, bool is_wfe)
     return 0;
 }
 
-void HELPER(wfi)(CPUARMState *env)
+void __attribute__((weak)) HELPER(wfi)(CPUARMState *env)
 {
     CPUState *cs = CPU(arm_env_get_cpu(env));
     int target_el = check_wfx_trap(env, false);
@@ -329,7 +329,7 @@ void HELPER(wfi)(CPUARMState *env)
     cpu_loop_exit(cs);
 }
 
-void HELPER(wfe)(CPUARMState *env)
+void __attribute__((weak)) HELPER(wfe)(CPUARMState *env)
 {
     /* This is a hint instruction that is semantically different
      * from YIELD even though we currently implement it identically.
@@ -352,6 +352,11 @@ void HELPER(yield)(CPUARMState *env)
      */
     cs->exception_index = EXCP_YIELD;
     cpu_loop_exit(cs);
+}
+
+void __attribute__((weak)) HELPER(sev)(CPUARMState *env)
+{
+    HELPER(yield)(env);
 }
 
 /* Raise an internal-to-QEMU exception. This is limited to only

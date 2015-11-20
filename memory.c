@@ -26,6 +26,8 @@
 #include "exec/ram_addr.h"
 #include "sysemu/sysemu.h"
 
+#include "hw/arm/tegra2/include/tegra_trace.h"
+
 //#define DEBUG_UNASSIGNED
 
 #define RAM_ADDR_INVALID (~(ram_addr_t)0)
@@ -1033,6 +1035,7 @@ static uint64_t unassigned_mem_read(void *opaque, hwaddr addr,
 #endif
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, false, false, 0, size);
+        TRACE_READ(addr, 0, 0);
     }
     return 0;
 }
@@ -1045,6 +1048,7 @@ static void unassigned_mem_write(void *opaque, hwaddr addr,
 #endif
     if (current_cpu != NULL) {
         cpu_unassigned_access(current_cpu, addr, true, false, 0, size);
+        TRACE_WRITE(addr, 0, val, 0);
     }
 }
 
