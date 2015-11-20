@@ -182,7 +182,7 @@ static void tegra_res_sema_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_res_sema_mem_ops = {
     .read = tegra_res_sema_priv_read,
     .write = tegra_res_sema_priv_write,
-    .endianness = DEVICE_NATIVE_ENDIAN,
+    .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
 static int tegra_res_sema_priv_init(SysBusDevice *dev)
