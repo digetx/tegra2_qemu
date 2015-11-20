@@ -58,7 +58,7 @@ extern void * tegra_evp_dev;
 extern void * tegra_ictlr_dev;
 extern void * tegra_gr2d_dev;
 extern void * tegra_host1x_dev;
-extern void * tegra_cch_dev;
+extern void * tegra_cop_mmu_dev;
 extern void * tegra_res_sema_dev;
 
 void tegra_a9mpcore_reset(void);

@@ -451,8 +451,8 @@ static void tegra2_init(MachineState *machine)
                                                DIRQ(INT_SHR_SEM_OUTBOX_IBE),
                                                NULL);
 
-    /* AVP cache control */
-    tegra_cch_dev = sysbus_create_simple("tegra.cch", 0xF0000000, NULL);
+    /* AVP "MMU" TLB controls.  */
+    tegra_cop_mmu_dev = sysbus_create_simple("tegra.cop_mmu", 0xF0000000, NULL);
 
     /* COP's address map differs a bit from A9.  */
     memory_region_init(cop_sysmem, NULL, "tegra.cop-memory", UINT64_MAX);
@@ -508,7 +508,7 @@ static void tegra2_init(MachineState *machine)
                                 BOOTMON_BASE,
                                 BOOTMON_BASE, TARGET_PAGE_SIZE);
 
-    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-cch", sysmem,
+    cop_memory_region_add_alias(cop_sysmem, "tegra.cop-mmu", sysmem,
                                 0xF0000000,
                                 0xF0000000, SZ_64K);
 

@@ -27,8 +27,8 @@
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
 
-#define TYPE_TEGRA_CCH "tegra.cch"
-#define TEGRA_CCH(obj) OBJECT_CHECK(tegra_cch, (obj), TYPE_TEGRA_CCH)
+#define TYPE_TEGRA_COP_MMU "tegra.cop_mmu"
+#define TEGRA_COP_MMU(obj) OBJECT_CHECK(tegra_cop_mmu, (obj), TYPE_TEGRA_COP_MMU)
 
 #define PTE0_COMPARE    0xF000
 #define PTE0_TRANSLATE  0xF004
@@ -40,7 +40,7 @@
 #define TRANSLATE_HIT   (1 << 7)
 #define TRANSLATE_EN    (1 << 2)
 
-typedef struct tegra_cch_state {
+typedef struct tegra_cop_mmu_state {
     SysBusDevice parent_obj;
 
     MemoryRegion iomem;
@@ -49,25 +49,25 @@ typedef struct tegra_cch_state {
     uint16_t translate_phys_base;
     uint16_t translate_flags;
     uint16_t translate_mask;
-} tegra_cch;
+} tegra_cop_mmu;
 
-static const VMStateDescription vmstate_tegra_cch = {
-    .name = "tegra.cch",
+static const VMStateDescription vmstate_tegra_cop_mmu = {
+    .name = "tegra.cop_mmu",
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_UINT16(translate_virt_base, tegra_cch),
-        VMSTATE_UINT16(translate_phys_base, tegra_cch),
-        VMSTATE_UINT16(translate_flags, tegra_cch),
-        VMSTATE_UINT16(translate_mask, tegra_cch),
+        VMSTATE_UINT16(translate_virt_base, tegra_cop_mmu),
+        VMSTATE_UINT16(translate_phys_base, tegra_cop_mmu),
+        VMSTATE_UINT16(translate_flags, tegra_cop_mmu),
+        VMSTATE_UINT16(translate_mask, tegra_cop_mmu),
         VMSTATE_END_OF_LIST()
     }
 };
 
-static uint64_t tegra_cch_priv_read(void *opaque, hwaddr offset,
-                                    unsigned size)
+static uint64_t tegra_cop_mmu_priv_read(void *opaque, hwaddr offset,
+					unsigned size)
 {
-    tegra_cch *s = opaque;
+    tegra_cop_mmu *s = opaque;
     uint64_t ret = 0;
 
     if (current_cpu != qemu_get_cpu(TEGRA2_COP)) {
@@ -92,10 +92,10 @@ static uint64_t tegra_cch_priv_read(void *opaque, hwaddr offset,
     return ret;
 }
 
-static void tegra_cch_refill_tlb(tegra_cch *s)
+static void tegra_cop_mmu_refill_tlb(tegra_cop_mmu *s)
 {
-    const hwaddr phys_base = s->translate_phys_base;
-    const hwaddr virt_base = s->translate_virt_base & s->translate_mask;
+    hwaddr phys_base = 0x8000 | s->translate_phys_base;
+    hwaddr virt_base = s->translate_virt_base & s->translate_mask;
 
     tlb_flush(current_cpu, 1);
 
@@ -111,7 +111,7 @@ static void tegra_cch_refill_tlb(tegra_cch *s)
     g_assert(s->translate_flags & TRANSLATE_CODE);
 
     /* ??? Locking "no-MMU" mode might be better.  */
-    tlb_set_page(current_cpu, virt_base << 16, 0x80000000 | (phys_base << 16),
+    tlb_set_page(current_cpu, virt_base << 16, phys_base << 16,
                  PAGE_BITS, ARMMMUIdx_S12NSE1, SZ_1M);
 
 FIN:
@@ -122,13 +122,15 @@ FIN:
     }
 }
 
-static void tegra_cch_priv_write(void *opaque, hwaddr offset,
-                                 uint64_t value, unsigned size)
+static void tegra_cop_mmu_priv_write(void *opaque, hwaddr offset,
+				     uint64_t value, unsigned size)
 {
-    tegra_cch *s = opaque;
-    uint32_t old;
+    tegra_cop_mmu *s = opaque;
+    uint32_t old __attribute__ ((unused));
 
+    /* MMU is in main address space for simplicity. Avoid CPU access.  */
     if (current_cpu != qemu_get_cpu(TEGRA2_COP)) {
+        TRACE_WRITE(s->iomem.addr, offset, 0, value);
         return;
     }
 
@@ -137,7 +139,6 @@ static void tegra_cch_priv_write(void *opaque, hwaddr offset,
     switch (offset) {
     case PTE0_COMPARE:
         old = (s->translate_virt_base << 16) | s->translate_mask;
-
         TRACE_WRITE(s->iomem.addr, offset, old, value);
 
         s->translate_virt_base = value >> 16;
@@ -145,7 +146,6 @@ static void tegra_cch_priv_write(void *opaque, hwaddr offset,
         break;
     case PTE0_TRANSLATE:
         old = (s->translate_phys_base << 16) | s->translate_flags;
-
         TRACE_WRITE(s->iomem.addr, offset, old, value);
 
         s->translate_phys_base = (value >> 16) & 0x3FFF;
@@ -156,12 +156,12 @@ static void tegra_cch_priv_write(void *opaque, hwaddr offset,
         return;
     }
 
-    tegra_cch_refill_tlb(s);
+    tegra_cop_mmu_refill_tlb(s);
 }
 
-static void tegra_cch_priv_reset(DeviceState *dev)
+static void tegra_cop_mmu_priv_reset(DeviceState *dev)
 {
-    tegra_cch *s = TEGRA_CCH(dev);
+    tegra_cop_mmu *s = TEGRA_COP_MMU(dev);
 
     s->translate_virt_base = 0;
     s->translate_phys_base = 0;
@@ -169,17 +169,17 @@ static void tegra_cch_priv_reset(DeviceState *dev)
     s->translate_mask = 0;
 }
 
-static const MemoryRegionOps tegra_cch_mem_ops = {
-    .read = tegra_cch_priv_read,
-    .write = tegra_cch_priv_write,
+static const MemoryRegionOps tegra_cop_mmu_mem_ops = {
+    .read = tegra_cop_mmu_priv_read,
+    .write = tegra_cop_mmu_priv_write,
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static hwaddr tegra_cch_translate(hwaddr addr, int access_type)
+static hwaddr tegra_cop_mmu_translate(hwaddr addr, int access_type)
 {
-    tegra_cch *s = tegra_cch_dev;
-    const hwaddr phys_base = s->translate_phys_base;
-    const hwaddr virt_base = s->translate_virt_base & s->translate_mask;
+    tegra_cop_mmu *s = tegra_cop_mmu_dev;
+    hwaddr phys_base = 0x8000 | s->translate_phys_base;
+    hwaddr virt_base = s->translate_virt_base & s->translate_mask;
 
     if (!(s->translate_flags & TRANSLATE_EN)) {
         return addr;
@@ -190,45 +190,45 @@ static hwaddr tegra_cch_translate(hwaddr addr, int access_type)
     }
 
     addr &= 0x0000FFFF;
-    addr |= 0x80000000 | (phys_base << 16);
+    addr |= (phys_base << 16);
 
     return addr;
 }
 
-static int tegra_cch_priv_init(SysBusDevice *dev)
+static int tegra_cop_mmu_priv_init(SysBusDevice *dev)
 {
-    tegra_cch *s = TEGRA_CCH(dev);
+    tegra_cop_mmu *s = TEGRA_COP_MMU(dev);
     CPUState *cs = qemu_get_cpu(TEGRA2_COP);
 
-    memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_cch_mem_ops, s,
-                          "tegra.cch", SZ_64K);
+    memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_cop_mmu_mem_ops, s,
+                          "tegra.cop_mmu", SZ_64K);
     sysbus_init_mmio(dev, &s->iomem);
 
-    ARM_CPU(cs)->translate_addr = tegra_cch_translate;
+    ARM_CPU(cs)->translate_addr = tegra_cop_mmu_translate;
 
     return 0;
 }
 
-static void tegra_cch_class_init(ObjectClass *klass, void *data)
+static void tegra_cop_mmu_class_init(ObjectClass *klass, void *data)
 {
     SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_cch_priv_init;
-    dc->vmsd = &vmstate_tegra_cch;
-    dc->reset = tegra_cch_priv_reset;
+    k->init = tegra_cop_mmu_priv_init;
+    dc->vmsd = &vmstate_tegra_cop_mmu;
+    dc->reset = tegra_cop_mmu_priv_reset;
 }
 
-static const TypeInfo tegra_cch_info = {
-    .name = TYPE_TEGRA_CCH,
+static const TypeInfo tegra_cop_mmu_info = {
+    .name = TYPE_TEGRA_COP_MMU,
     .parent = TYPE_SYS_BUS_DEVICE,
-    .instance_size = sizeof(tegra_cch),
-    .class_init = tegra_cch_class_init,
+    .instance_size = sizeof(tegra_cop_mmu),
+    .class_init = tegra_cop_mmu_class_init,
 };
 
-static void tegra_cch_register_types(void)
+static void tegra_cop_mmu_register_types(void)
 {
-    type_register_static(&tegra_cch_info);
+    type_register_static(&tegra_cop_mmu_info);
 }
 
-type_init(tegra_cch_register_types)
+type_init(tegra_cop_mmu_register_types)
