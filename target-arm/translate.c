@@ -4124,10 +4124,10 @@ static void gen_nop_hint(DisasContext *s, int val)
         s->is_jmp = DISAS_WFE;
         break;
     case 4: /* sev */
+    case 5: /* sevl */
         gen_set_pc_im(s, s->pc);
         s->is_jmp = DISAS_SEV;
         break;
-    case 5: /* sevl */
         /* TODO: Implement SEV, SEVL and WFE.  May help SMP performance.  */
     default: /* nop */
         break;
@@ -7723,9 +7723,14 @@ static void disas_arm_insn(DisasContext *s, unsigned int insn)
                 gen_clrex(s);
                 return;
             case 4: /* dsb */
+                /* We don't emulate caches so these are a no-op.  */
+                return;
             case 5: /* dmb */
                 ARCH(7);
-                /* We don't emulate caches so these are a no-op.  */
+                /* This instruction is often being used in SMP sync
+                 * busy loop, causing long timeouts without any further
+                 * progress. So, yield.  */
+                gen_nop_hint(s, 1);
                 return;
             case 6: /* isb */
                 /* We need to break the TB after this insn to execute

@@ -19,7 +19,7 @@
 
 #include "hw/sysbus.h"
 #include "sysemu/dma.h"
-#include "qemu/aes.h"
+#include "crypto/aes.h"
 
 #include "bse.h"
 #include "iomap.h"

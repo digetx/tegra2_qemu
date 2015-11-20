@@ -49,6 +49,14 @@
 
 #define JMP_FIXUP   (sizeof(tegra_bootrom) / 4 - 2)
 
+/* WARNING: HACK! FIXME: Copied from exec.c  */
+struct CPUAddressSpace {
+    CPUState *cpu;
+    AddressSpace *as;
+    struct AddressSpaceDispatch *memory_dispatch;
+    MemoryListener tcg_as_listener;
+};
+
 static uint32_t tegra_bootmon[] = {
     0xe3a00206, /* ldr r0, =TEGRA_PG */
     0xe5901000, /* ldr r1, [r0]] */
@@ -514,7 +522,11 @@ static void tegra2_init(MachineState *machine)
 
     cs = qemu_get_cpu(TEGRA2_COP);
     cs->as = cop_as;
-    cpu_reload_memory_map(cs);
+
+    /* Override default AS.  */
+    memory_listener_unregister(&cs->cpu_ases[0].tcg_as_listener);
+    cs->cpu_ases[0].as = cop_as;
+    memory_listener_register(&cs->cpu_ases[0].tcg_as_listener, cop_as);
 
     load_memory_images(machine);
 
@@ -528,14 +540,6 @@ static void tegra2_reset(void)
 
     tegra_cpu_reset_deassert(TEGRA2_COP);
 }
-
-static QEMUMachine tegra2_alpha_machine = {
-    .name = "tegra2-alpha",
-    .desc = "ARM NVIDIA Tegra2",
-    .init = tegra2_init,
-    .reset = tegra2_reset,
-    .max_cpus = TEGRA2_NCPUS,
-};
 
 static QemuOptsList qemu_tegra_opts = {
     .name = "tegra",
@@ -554,10 +558,14 @@ static QemuOptsList qemu_tegra_opts = {
     }
 };
 
-static void tegra2_machine_init(void)
+static void tegra2_machine_init(MachineClass *mc)
 {
-    qemu_register_machine(&tegra2_alpha_machine);
+    mc->desc = "ARM NVIDIA Tegra2";
+    mc->init = tegra2_init;
+    mc->reset = tegra2_reset;
+    mc->max_cpus = TEGRA2_NCPUS;
+
     qemu_add_opts(&qemu_tegra_opts);
 }
 
-machine_init(tegra2_machine_init);
+DEFINE_MACHINE("tegra2-alpha", tegra2_machine_init)
