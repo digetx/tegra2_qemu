@@ -4,6 +4,7 @@ obj-y += axi/emc/emc.o
 obj-y += axi/mc/mc.o
 
 obj-y += ppsb/arb_sema/arb_sema.o
+obj-y += ppsb/res_sema/res_sema.o
 obj-y += ppsb/ictlr/arb_gnt_ictlr.o
 obj-y += ppsb/ictlr/ictlr.o
 obj-y += ppsb/apb_misc/apb_misc.o

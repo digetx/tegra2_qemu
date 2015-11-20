@@ -436,11 +436,19 @@ static void tegra2_init(MachineState *machine)
     if (nd_table[0].used)
         lan9118_init(&nd_table[0], 0xA0000000, DIRQ(INT_SW_RESERVED));
 
-    /* Multi CPU shared resources access arbitration */
+    /* Multi-CPU shared resources access arbitration */
     tegra_arb_sema_dev = sysbus_create_varargs("tegra.arb_sema",
                                                TEGRA_ARB_SEMA_BASE,
                                                DIRQ(INT_GNT_0),
                                                DIRQ(INT_GNT_1),
+                                               NULL);
+
+    tegra_res_sema_dev = sysbus_create_varargs("tegra.res_sema",
+                                               TEGRA_RES_SEMA_BASE,
+                                               DIRQ(INT_SHR_SEM_INBOX_IBF),
+                                               DIRQ(INT_SHR_SEM_INBOX_IBE),
+                                               DIRQ(INT_SHR_SEM_OUTBOX_IBF),
+                                               DIRQ(INT_SHR_SEM_OUTBOX_IBE),
                                                NULL);
 
     /* AVP cache control */
