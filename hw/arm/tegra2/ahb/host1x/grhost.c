@@ -38,8 +38,10 @@ typedef struct tegra_grhost_state {
     tegra_host1x_channel channels[CHANNELS_NB];
 
     MemoryRegion container;
-    qemu_irq syncpt_irq;
-    qemu_irq general_irq;
+    qemu_irq cop_syncpts_irq;
+    qemu_irq cpu_syncpts_irq;
+    qemu_irq cop_general_irq;
+    qemu_irq cpu_general_irq;
 } tegra_grhost;
 
 static void tegra_grhost_priv_initfn(Object *obj)
@@ -76,10 +78,12 @@ static void tegra_grhost_priv_realize(DeviceState *dev, Error **errp)
     tegra_grhost *s = TEGRA_GRHOST(dev);
     int i;
 
-    sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->syncpt_irq);
-    sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->general_irq);
+    sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->cop_syncpts_irq);
+    sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->cpu_syncpts_irq);
+    sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->cop_general_irq);
+    sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->cpu_general_irq);
 
-    host1x_init_syncpts_irq(&s->syncpt_irq);
+    host1x_init_syncpts_irq(&s->cpu_syncpts_irq, &s->cop_syncpts_irq);
     host1x_init_mlocks();
     host1x_init_dma();
 

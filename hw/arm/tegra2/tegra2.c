@@ -422,7 +422,9 @@ static void tegra2_init(MachineState *machine)
     /* Host1x IO */
     tegra_grhost_dev = sysbus_create_varargs("tegra.grhost",
                                              TEGRA_GRHOST_BASE,
+                                             DIRQ(INT_HOST1X_COP_SYNCPT),
                                              DIRQ(INT_HOST1X_MPCORE_SYNCPT),
+                                             DIRQ(INT_HOST1X_COP_GENERAL),
                                              DIRQ(INT_HOST1X_MPCORE_GENERAL),
                                              NULL);
 

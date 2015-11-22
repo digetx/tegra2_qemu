@@ -67,7 +67,7 @@ void host1x_set_syncpts_irq_dst_mask(int part, uint32_t mask);
 void host1x_clear_syncpts_irq_dst_mask(uint32_t clear_mask);
 void host1x_set_syncpt_irq(uint8_t syncpt_id);
 void host1x_clear_syncpts_irq_status(enum hcpu cpu_id, uint32_t clear_mask);
-void host1x_init_syncpts_irq(qemu_irq *irq);
+void host1x_init_syncpts_irq(qemu_irq *cpu_irq, qemu_irq *cop_irq);
 void host1x_reset_syncpt_irqs(void);
 
 #define INTSTATUS_OFFSET 0x0

@@ -24,9 +24,6 @@
 
 #include "tegra_trace.h"
 
-#define CPU_IRQ(v)  ((1 << 0) | ((!!v) << 1))
-#define COP_IRQ(v)  ((1 << 2) | ((!!v) << 3))
-
 #define lock_irqs()     qemu_mutex_lock(&irq_mutex)
 #define unlock_irqs()   qemu_mutex_unlock(&irq_mutex)
 
@@ -34,7 +31,8 @@ static uint32_t syncpts_irq_sts;
 static uint32_t syncpts_percpu_irq_sts[HOST1X_CPUS_NB];
 static uint32_t syncpts_percpu_dst_mask[HOST1X_CPUS_NB];
 
-static qemu_irq *syncpts_irq;
+static qemu_irq *cpu_syncpts_irq;
+static qemu_irq *cop_syncpts_irq;
 
 static QemuMutex irq_mutex;
 
@@ -102,10 +100,10 @@ static void host1x_set_irq_status_bit(enum hcpu cpu_id, bool enable)
 
     switch (cpu_id) {
     case HOST1X_CPU:
-        TRACE_IRQ_SET(0x50003000, *syncpts_irq, CPU_IRQ(enable));
+        TRACE_IRQ_SET(0x50003000, *cpu_syncpts_irq, enable);
         break;
     case HOST1X_COP:
-        TRACE_IRQ_SET(0x50003000, *syncpts_irq, COP_IRQ(enable));
+        TRACE_IRQ_SET(0x50003000, *cop_syncpts_irq, enable);
         break;
     default:
         g_assert_not_reached();
@@ -207,11 +205,12 @@ void host1x_clear_syncpts_irq_status(enum hcpu cpu_id, uint32_t clear_mask)
     unlock_irqs();
 }
 
-void host1x_init_syncpts_irq(qemu_irq *irq)
+void host1x_init_syncpts_irq(qemu_irq *cpu_irq, qemu_irq *cop_irq)
 {
     qemu_mutex_init(&irq_mutex);
 
-    syncpts_irq = irq;
+    cpu_syncpts_irq = cpu_irq;
+    cop_syncpts_irq = cop_irq;
 }
 
 void host1x_reset_syncpt_irqs(void)
