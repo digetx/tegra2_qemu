@@ -86,6 +86,7 @@ typedef union csr_u {
 
 #define COP_CSR_OFFSET 0xC
 #define COP_CSR_RESET  0x00000000
+#define COP_CSR_WRMASK 0x00008000
 
 #define XRQ_EVENTS_OFFSET 0x10
 #define XRQ_EVENTS_RESET  0x00000000

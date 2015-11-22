@@ -98,23 +98,29 @@ static uint64_t tegra_flow_priv_read(void *opaque, hwaddr offset,
                                      unsigned size)
 {
     tegra_flow *s = opaque;
-    int cpu_id = (offset & 0x4) ? TEGRA2_COP :
-                            (offset >> 4) ? TEGRA2_A9_CORE1 : TEGRA2_A9_CORE0;
     uint64_t ret = 0;
 
     assert(size == 4);
 
     switch (offset) {
     case HALT_CPU0_EVENTS_OFFSET:
+        ret = s->halt_events[TEGRA2_A9_CORE0].reg32;
+        break;
     case HALT_CPU1_EVENTS_OFFSET:
+        ret = s->halt_events[TEGRA2_A9_CORE1].reg32;
+        break;
     case HALT_COP_EVENTS_OFFSET:
-        ret = s->halt_events[cpu_id].reg32;
+        ret = s->halt_events[TEGRA2_COP].reg32;
         break;
 
     case CPU0_CSR_OFFSET:
+        ret = s->csr[TEGRA2_A9_CORE0].reg32;
+        break;
     case CPU1_CSR_OFFSET:
+        ret = s->csr[TEGRA2_A9_CORE1].reg32;
+        break;
     case COP_CSR_OFFSET:
-        ret = s->csr[cpu_id].reg32;
+        ret = s->csr[TEGRA2_COP].reg32;
         break;
 
     case XRQ_EVENTS_OFFSET:
@@ -303,6 +309,7 @@ static int tegra_flow_arm_event(tegra_flow *s, int cpu_id)
 static void tegra_flow_update_events(tegra_flow *s, int cpu_id, int in_wfe)
 {
     int mode = s->halt_events[cpu_id].mode;
+    int event, irq = 0;
 
 //     TPRINT("%s mode=%s in_wfe=%d cpu %d\n", __func__,
 //            tegra_flow_mode_name(mode), in_wfe, cpu_id);
@@ -320,17 +327,15 @@ static void tegra_flow_update_events(tegra_flow *s, int cpu_id, int in_wfe)
         break;
 
     case FLOW_MODE_STOP_UNTIL_IRQ_AND_INT:
+        irq = tegra_ictlr_is_irq_pending_on_cpu(cpu_id);
     case FLOW_MODE_STOP_UNTIL_IRQ:
         if (s->csr[cpu_id].wait_wfe_bitmap) {
             break;
         }
 
-        if (!tegra_ictlr_is_irq_pending_on_cpu(cpu_id)) {
+        if (!irq) {
             tegra_cpu_halt(cpu_id);
-            break;
-        }
-
-        if (mode == FLOW_MODE_STOP_UNTIL_IRQ_AND_INT) {
+        } else if (mode == FLOW_MODE_STOP_UNTIL_IRQ_AND_INT) {
             tegra_flow_gen_interrupt(s, cpu_id);
         }
         break;
@@ -342,12 +347,10 @@ static void tegra_flow_update_events(tegra_flow *s, int cpu_id, int in_wfe)
 
         s->sts = 0;
 
-        if (tegra_flow_arm_event(s, cpu_id)) {
-            tegra_cpu_halt(cpu_id);
-            break;
-        }
+        event = !tegra_flow_arm_event(s, cpu_id);
+        irq = tegra_ictlr_is_irq_pending_on_cpu(cpu_id);
 
-        if (!tegra_ictlr_is_irq_pending_on_cpu(cpu_id)) {
+        if (!event || !irq) {
             tegra_cpu_halt(cpu_id);
         }
         break;
@@ -382,47 +385,70 @@ static void tegra_flow_wfe_notify(Notifier *n, void *data)
     }
 }
 
+static void tegra_flow_event_write(tegra_flow *s, hwaddr offset,
+                                   uint32_t value, int cpu_id)
+{
+    TRACE_WRITE(s->iomem.addr, offset, s->halt_events[cpu_id].reg32, value);
+
+    s->halt_events[cpu_id].reg32 = value;
+    tegra_flow_update_events(s, cpu_id, 0);
+}
+
+static void tegra_flow_csr_write(tegra_flow *s, hwaddr offset,
+                                 uint32_t value, int cpu_id)
+{
+    csr_t old_csr;
+
+    TRACE_WRITE(s->iomem.addr, offset, s->csr[cpu_id].reg32, value);
+
+    if (cpu_id != TEGRA2_COP) {
+        WR_MASKED(s->csr[cpu_id].reg32, value, CPU_CSR);
+    } else {
+        WR_MASKED(s->csr[cpu_id].reg32, value, COP_CSR);
+    }
+
+    old_csr = s->csr[cpu_id];
+//     s->csr[cpu_id].reg32 &= ~(value & 0x3000);
+
+    if (old_csr.intr_flag && !s->csr[cpu_id].intr_flag) {
+        switch (cpu_id) {
+        case TEGRA2_A9_CORE0:
+        case TEGRA2_A9_CORE1:
+            TRACE_IRQ_LOWER(s->iomem.addr, s->irq_cpu_event);
+            break;
+        case TEGRA2_COP:
+            TRACE_IRQ_LOWER(s->iomem.addr, s->irq_cop_event);
+            break;
+        }
+    }
+}
+
 static void tegra_flow_priv_write(void *opaque, hwaddr offset,
                                   uint64_t value, unsigned size)
 {
     tegra_flow *s = opaque;
-    int cpu_id = (offset < 0x10 && (offset & 0x4)) ? TEGRA2_COP :
-                                (offset >> 4) ? TEGRA2_A9_CORE1 : TEGRA2_A9_CORE0;
-    csr_t old_csr;
 
     assert(size == 4);
 
     switch (offset) {
     case HALT_CPU0_EVENTS_OFFSET:
+        tegra_flow_event_write(s, offset, value, TEGRA2_A9_CORE0);
+        break;
     case HALT_CPU1_EVENTS_OFFSET:
+        tegra_flow_event_write(s, offset, value, TEGRA2_A9_CORE1);
+        break;
     case HALT_COP_EVENTS_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->halt_events[cpu_id].reg32, value);
-        s->halt_events[cpu_id].reg32 = value;
-
-        tegra_flow_update_events(s, cpu_id, 0);
+        tegra_flow_event_write(s, offset, value, TEGRA2_COP);
         break;
 
     case CPU0_CSR_OFFSET:
+        tegra_flow_csr_write(s, offset, value, TEGRA2_A9_CORE0);
+        break;
     case CPU1_CSR_OFFSET:
+        tegra_flow_csr_write(s, offset, value, TEGRA2_A9_CORE1);
+        break;
     case COP_CSR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->csr[cpu_id].reg32, value & CPU_CSR_WRMASK);
-        if (cpu_id != TEGRA2_COP)
-            WR_MASKED(s->csr[cpu_id].reg32, value, CPU_CSR);
-
-        old_csr = s->csr[cpu_id];
-        s->csr[cpu_id].reg32 &= ~(value & 0x3000);
-
-        if (old_csr.intr_flag && !s->csr[cpu_id].intr_flag) {
-            switch (cpu_id) {
-            case TEGRA2_A9_CORE0:
-            case TEGRA2_A9_CORE1:
-                TRACE_IRQ_LOWER(s->iomem.addr, s->irq_cpu_event);
-                break;
-            case TEGRA2_COP:
-                TRACE_IRQ_LOWER(s->iomem.addr, s->irq_cop_event);
-                break;
-            }
-        }
+        tegra_flow_csr_write(s, offset, value, TEGRA2_COP);
         break;
 
     case XRQ_EVENTS_OFFSET:
