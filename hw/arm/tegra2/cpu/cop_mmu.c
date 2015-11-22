@@ -65,7 +65,7 @@ static const VMStateDescription vmstate_tegra_cop_mmu = {
 };
 
 static uint64_t tegra_cop_mmu_priv_read(void *opaque, hwaddr offset,
-					unsigned size)
+                                        unsigned size)
 {
     tegra_cop_mmu *s = opaque;
     uint64_t ret = 0;
@@ -92,38 +92,8 @@ static uint64_t tegra_cop_mmu_priv_read(void *opaque, hwaddr offset,
     return ret;
 }
 
-static void tegra_cop_mmu_refill_tlb(tegra_cop_mmu *s)
-{
-    hwaddr phys_base = 0x8000 | s->translate_phys_base;
-    hwaddr virt_base = s->translate_virt_base & s->translate_mask;
-
-    tlb_flush(current_cpu, 1);
-
-    if (!(s->translate_flags & TRANSLATE_EN)) {
-        goto FIN;
-    }
-
-    /* Too much churn to implement correctly.  */
-    g_assert(s->translate_flags & TRANSLATE_DATA);
-    g_assert(s->translate_flags & TRANSLATE_HIT);
-    g_assert(s->translate_flags & TRANSLATE_RD);
-    g_assert(s->translate_flags & TRANSLATE_WR);
-    g_assert(s->translate_flags & TRANSLATE_CODE);
-
-    /* ??? Locking "no-MMU" mode might be better.  */
-    tlb_set_page(current_cpu, virt_base << 16, phys_base << 16,
-                 PAGE_BITS, ARMMMUIdx_S12NSE1, SZ_1M);
-
-FIN:
-    if (tcg_enabled()) {
-        if (tcg_ctx.gen_next_op_idx != OPC_BUF_SIZE) {
-            tcg_gen_exit_tb(0);
-        }
-    }
-}
-
 static void tegra_cop_mmu_priv_write(void *opaque, hwaddr offset,
-				     uint64_t value, unsigned size)
+                                     uint64_t value, unsigned size)
 {
     tegra_cop_mmu *s = opaque;
     uint32_t old __attribute__ ((unused));
@@ -150,13 +120,28 @@ static void tegra_cop_mmu_priv_write(void *opaque, hwaddr offset,
 
         s->translate_phys_base = (value >> 16) & 0x3FFF;
         s->translate_flags = value & 0xFFF;
+
+        if (s->translate_flags & TRANSLATE_EN) {
+            /* Too much churn to implement correctly.  */
+            g_assert(s->translate_flags & TRANSLATE_DATA);
+            g_assert(s->translate_flags & TRANSLATE_HIT);
+            g_assert(s->translate_flags & TRANSLATE_RD);
+            g_assert(s->translate_flags & TRANSLATE_WR);
+            g_assert(s->translate_flags & TRANSLATE_CODE);
+        }
         break;
     default:
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
         return;
     }
 
-    tegra_cop_mmu_refill_tlb(s);
+    tlb_flush(current_cpu, 1);
+
+    if (tcg_enabled()) {
+        if (tcg_ctx.gen_next_op_idx != OPC_BUF_SIZE) {
+            tcg_gen_exit_tb(0);
+        }
+    }
 }
 
 static void tegra_cop_mmu_priv_reset(DeviceState *dev)
@@ -178,19 +163,23 @@ static const MemoryRegionOps tegra_cop_mmu_mem_ops = {
 static hwaddr tegra_cop_mmu_translate(hwaddr addr, int access_type)
 {
     tegra_cop_mmu *s = tegra_cop_mmu_dev;
-    hwaddr phys_base = 0x8000 | s->translate_phys_base;
-    hwaddr virt_base = s->translate_virt_base & s->translate_mask;
+    hwaddr phys_base = s->translate_phys_base & s->translate_mask;
+    hwaddr virt_base = s->translate_virt_base;
+//     hwaddr orig = addr;
 
     if (!(s->translate_flags & TRANSLATE_EN)) {
         return addr;
     }
 
-    if ((addr >> 16) != virt_base) {
+    if (((addr >> 16) & s->translate_mask) != virt_base) {
+//         printf("NOT! translated 0x%08X\n", (uint32_t) addr);
         return addr;
     }
 
-    addr &= 0x0000FFFF;
-    addr |= (phys_base << 16);
+    addr &= ~((0xC000 | s->translate_mask) << 16);
+    addr |= (0x8000 | phys_base) << 16;
+
+//     printf("translate 0x%08X -> 0x%08X\n", (uint32_t) orig, (uint32_t) addr);
 
     return addr;
 }
