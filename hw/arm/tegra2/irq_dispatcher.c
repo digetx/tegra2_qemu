@@ -50,14 +50,11 @@ static void tegra_irq_dispatcher_set_irq_dev(void *opaque, int irq, int level)
 //     TPRINT("%s irq=%d lvl=%d\n", __func__, irq, level);
 
     if (irq == INT_HOST1X_MPCORE_SYNCPT) {
-        if (SYNCPTS_CPU_IRQ(level)) {
+        if (SYNCPTS_CPU_IRQ(level))
             qemu_set_irq(qdev_get_gpio_in(DEVICE(&a9mpcore->gic), irq), level & 2);
-            qemu_set_irq(qdev_get_gpio_in(DEVICE(ictlr), irq), level & 2);
-        }
 
-        if (SYNCPTS_COP_IRQ(level)) {
+        if (SYNCPTS_COP_IRQ(level))
             qemu_set_irq(qdev_get_gpio_in(DEVICE(ictlr), irq), level & 8);
-        }
 
         return;
     }
