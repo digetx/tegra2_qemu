@@ -20,6 +20,7 @@ obj-y += ahb/apb_dma/apb_dma.o
 obj-y += ahb/bse/bse.o
 obj-y += ahb/gizmo/gizmo.o
 obj-y += ahb/host1x/
+obj-y += ahb/usb/usb.o
 
 obj-y += apb/fuse/fuse.o
 obj-y += apb/i2c/i2c.o

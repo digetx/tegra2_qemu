@@ -23,7 +23,6 @@
 #include "hw/arm/arm.h"
 #include "hw/loader.h"
 #include "hw/char/serial.h"
-#include "hw/usb/hcd-ehci.h"
 #include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/char.h"
@@ -388,11 +387,11 @@ static void tegra2_init(MachineState *machine)
                                      DEVICE_LITTLE_ENDIAN);
 
     /* USB2 controllers */
-    tegra_ehci1_dev = sysbus_create_simple(TYPE_TEGRA2_EHCI,
+    tegra_ehci1_dev = sysbus_create_simple("tegra.usb",
                                            TEGRA_USB_BASE, DIRQ(INT_USB));
-//     tegra_ehci2_dev = sysbus_create_simple(TYPE_TEGRA2_EHCI,
+//     tegra_ehci2_dev = sysbus_create_simple("tegra.usb",
 //                                            TEGRA_USB2_BASE, DIRQ(INT_USB2));
-    tegra_ehci3_dev = sysbus_create_simple(TYPE_TEGRA2_EHCI,
+    tegra_ehci3_dev = sysbus_create_simple("tegra.usb",
                                            TEGRA_USB3_BASE, DIRQ(INT_USB3));
 
     /* TODO: share BSE with VD/AD */
