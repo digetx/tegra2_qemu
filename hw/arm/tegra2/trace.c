@@ -19,15 +19,8 @@
 
 #define LOCAL_SOCKET
 
-#include <arpa/inet.h>
-#include <assert.h>
-#include <stdint.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <stdio.h>
-
 #include <sysemu/sysemu.h>
+#include "qemu/sockets.h"
 #include "qemu/thread.h"
 
 #include "ahb/host1x/include/host1x_cdma.h"
@@ -83,23 +76,6 @@ struct __attribute__((packed, aligned(1))) trace_pkt_cdma {
 
 static int msgsock = -1;
 
-static int trace_write_socket(void *data, int size)
-{
-    if (msgsock < 0)
-        return 0;
-
-    while (write(msgsock, data, size) < 0) {
-        if (errno != EINTR) {
-            perror("writing on stream socket");
-            close(msgsock);
-            msgsock = -1;
-            break;
-        }
-    }
-
-    return 1;
-}
-
 void tegra_trace_text_message(const char* format, ...)
 {
 #ifdef _GNU_SOURCE
@@ -124,7 +100,7 @@ void tegra_trace_text_message(const char* format, ...)
     memcpy(W->text, txt, strlen(txt) + 1);
     free(txt);
 
-    if (!trace_write_socket(W, sz))
+    if (send_all(msgsock, W, sz) != 0)
         printf("%s", W->text);
 
     free(W);
@@ -144,7 +120,7 @@ void tegra_trace_irq(uint32_t hwaddr, uint32_t hwirq, uint32_t status)
         htonl(0)
     };
 
-    trace_write_socket(&W, sizeof(W));
+    send_all(msgsock, &W, sizeof(W));
 }
 
 void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
@@ -167,7 +143,7 @@ void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
         htonl(cpu_id)
     };
 
-    trace_write_socket(&W, sizeof(W));
+    send_all(msgsock, &W, sizeof(W));
 }
 
 void tegra_trace_cdma(uint32_t data, uint32_t is_gather, uint32_t ch_id)
@@ -181,52 +157,38 @@ void tegra_trace_cdma(uint32_t data, uint32_t is_gather, uint32_t ch_id)
         htonl(ch_id)
     };
 
-    trace_write_socket(&W, sizeof(W));
+    send_all(msgsock, &W, sizeof(W));
 }
 
 void tegra_trace_init(void)
 {
 #ifdef TEGRA_TRACE
     static int sock = -1;
-    int on = 1;
-#ifdef LOCAL_SOCKET
-    struct sockaddr_un server;
-    server.sun_family = AF_UNIX;
-    strcpy(server.sun_path, SOCKET_FILE);
 
-    unlink(SOCKET_FILE);
-    if (sock != -1)
-        close(sock);
-    sock = socket(PF_UNIX, SOCK_STREAM, PF_UNIX);
-#else
-    struct sockaddr_in server;
-    server.sin_family = AF_INET;
-    server.sin_addr.s_addr = htonl(INADDR_ANY);
-    server.sin_port = htons(19191);
-    if (sock != -1)
-        close(sock);
-    sock = socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-#endif // LOCAL_SOCKET
-    if (sock < 0) {
-        perror("opening stream socket");
-        exit(-1);
-    }
-
-    if (msgsock != -1)
+    if (msgsock != -1) {
         close(msgsock);
-
-    setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on));
-
-    if (bind(sock, (struct sockaddr *) &server, sizeof(server))) {
-        perror("binding stream socket");
-        exit(-1);
     }
 
-    printf("Waiting for trace viewer connection...\n");
-    listen(sock, 1);
+    if (sock != -1) {
+        goto WAIT;
+    }
 
-    msgsock = accept(sock, NULL, NULL);
-    assert(msgsock != -1);
+#ifdef LOCAL_SOCKET
+    sock = unix_listen(SOCKET_FILE, NULL, 0, &error_abort);
+#else
+    sock = inet_listen("0.0.0.0:19191", NULL, 0, SOCK_STREAM, 0, &error_abort);
+#endif // LOCAL_SOCKET
+
+    socket_set_fast_reuse(sock);
+
+    if (listen(sock, 1) < 0) {
+        error_setg_errno(&error_abort, errno, "Failed to listen on socket");
+    }
+
+WAIT:
+    printf("Waiting for trace viewer connection...\n");
+    msgsock = qemu_accept(sock, NULL, NULL);
+    g_assert(msgsock != -1);
 
     reset_time = qemu_clock_get_us(QEMU_CLOCK_VIRTUAL);
 #endif // TEGRA_TRACE
