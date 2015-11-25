@@ -28,9 +28,6 @@
 
 #define SOCKET_FILE     "/tmp/trace.sock"
 
-/* FIXME */
-static uint64_t reset_time;
-
 #define HOST1X_CDMA	0x1010
 
 #define PACKET_TRACE_RW 0x11111111
@@ -115,7 +112,7 @@ void tegra_trace_irq(uint32_t hwaddr, uint32_t hwirq, uint32_t status)
         htonl(hwaddr),
         htonl(hwirq),
         htonl(status),
-        htonl(time - reset_time),
+        htonl(time),
         htonl(0),
         htonl(0)
     };
@@ -138,7 +135,7 @@ void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
         htonl(value),
         htonl(new_value),
         htonl(is_write),
-        htonl(time - reset_time),
+        htonl(time),
         htonl(cpu_pc),
         htonl(cpu_id)
     };
@@ -189,7 +186,5 @@ WAIT:
     printf("Waiting for trace viewer connection...\n");
     msgsock = qemu_accept(sock, NULL, NULL);
     g_assert(msgsock != -1);
-
-    reset_time = qemu_clock_get_us(QEMU_CLOCK_VIRTUAL);
 #endif // TEGRA_TRACE
 }
