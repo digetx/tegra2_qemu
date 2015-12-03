@@ -394,7 +394,10 @@ static void tegra2_init(MachineState *machine)
     tegra_ehci3_dev = sysbus_create_simple("tegra.usb",
                                            TEGRA_USB3_BASE, DIRQ(INT_USB3));
 
-    /* TODO: share BSE with VD/AD */
+    /* Unified Command Queue */
+    tegra_ucq_dev = sysbus_create_simple("tegra.dummy256", 0x60010000, NULL);
+
+    /* Bit Stream Engine Audio */
     tegra_bsea_dev = qdev_create(NULL, "tegra.bse");
     object_property_set_bool(tegra_bsea_dev, true, "key_sched_gen_supported", &error_abort);
     object_property_set_int(tegra_bsea_dev, 80, "hw_key_sched_length", &error_abort);
@@ -402,8 +405,39 @@ static void tegra2_init(MachineState *machine)
     sysbus_mmio_map(SYS_BUS_DEVICE(tegra_bsea_dev), 0, TEGRA_BSEA_BASE + 0x1000);
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_bsea_dev), 0, DIRQ(INT_VDE_BSE_A));
 
+    /* Syntax Engine */
+    tegra_sxe_dev = sysbus_create_simple("tegra.dummy_4k", 0x6001A000, NULL);
+
+    /* BSE Video */
     tegra_bsev_dev = sysbus_create_simple("tegra.bse", TEGRA_VDE_BASE + 0x1000,
                                           DIRQ(INT_VDE_BSE_V));
+
+    /* Macroblock Engine */
+    tegra_mbe_dev = sysbus_create_simple("tegra.dummy256", 0x6001C000, NULL);
+
+    /* Post-processing Engine */
+    tegra_ppe_dev = sysbus_create_simple("tegra.dummy256", 0x6001C200, NULL);
+
+    /* Motion Compensation Engine */
+    tegra_mce_dev = sysbus_create_simple("tegra.dummy256", 0x6001C400, NULL);
+
+    /* Transform Engine */
+    tegra_tfe_dev = sysbus_create_simple("tegra.dummy256", 0x6001C600, NULL);
+
+    /* PPB ?? */
+    tegra_ppb_dev = sysbus_create_simple("tegra.dummy256", 0x6001C800, NULL);
+
+    /* Video DMA */
+    tegra_vdma_dev = sysbus_create_simple("tegra.dummy256", 0x6001CA00, NULL);
+
+    /* Unified Command Queue */
+    tegra_ucq2_dev = sysbus_create_simple("tegra.dummy256", 0x6001CC00, NULL);
+
+    /* BSE Audio */
+    tegra_bsea2_dev = sysbus_create_simple("tegra.dummy_2k", 0x6001D000, NULL);
+
+    /* FRAMEID */
+    tegra_frameid_dev = sysbus_create_simple("tegra.dummy768", 0x6001D800, NULL);
 
     /* I2C controllers */
     tegra_idc1_dev = sysbus_create_simple("tegra-i2c",

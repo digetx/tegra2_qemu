@@ -18,6 +18,10 @@ obj-y += ppsb/timer/timer_us.o
 
 obj-y += ahb/apb_dma/apb_dma.o
 obj-y += ahb/bse/bse.o
+obj-y += ahb/bse/dummy256.o
+obj-y += ahb/bse/dummy768.o
+obj-y += ahb/bse/dummy2k.o
+obj-y += ahb/bse/dummy4k.o
 obj-y += ahb/gizmo/gizmo.o
 obj-y += ahb/host1x/
 obj-y += ahb/usb/usb.o

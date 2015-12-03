@@ -63,6 +63,17 @@ void *tegra_gr2d_dev = NULL;
 void *tegra_host1x_dev = NULL;
 void *tegra_cop_mmu_dev = NULL;
 void *tegra_res_sema_dev = NULL;
+void *tegra_ucq_dev = NULL;
+void *tegra_sxe_dev = NULL;
+void *tegra_mbe_dev = NULL;
+void *tegra_ppe_dev = NULL;
+void *tegra_mce_dev = NULL;
+void *tegra_tfe_dev = NULL;
+void *tegra_ppb_dev = NULL;
+void *tegra_vdma_dev = NULL;
+void *tegra_ucq2_dev = NULL;
+void *tegra_bsea2_dev = NULL;
+void *tegra_frameid_dev = NULL;
 
 void tegra_a9mpcore_reset(void)
 {
