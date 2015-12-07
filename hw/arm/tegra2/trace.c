@@ -97,8 +97,9 @@ void tegra_trace_text_message(const char* format, ...)
     memcpy(W->text, txt, strlen(txt) + 1);
     free(txt);
 
-    if (send_all(msgsock, W, sz) != 0)
+    if (send_all(msgsock, W, sz) < 0) {
         printf("%s", W->text);
+    }
 
     free(W);
 #endif
