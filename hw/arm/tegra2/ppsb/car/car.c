@@ -21,6 +21,7 @@
 #include "sysemu/sysemu.h"
 
 #include "car.h"
+#include "clk_rst.h"
 #include "devices.h"
 #include "iomap.h"
 #include "tegra_cpu.h"
@@ -126,21 +127,8 @@ typedef struct tegra_car_state {
     DEFINE_REG32(clk_source_nor);
     DEFINE_REG32(clk_source_csite);
     DEFINE_REG32(clk_source_osc);
-    DEFINE_REG32(rst_dev_l_set);
-    DEFINE_REG32(rst_dev_l_clr);
-    DEFINE_REG32(rst_dev_h_set);
-    DEFINE_REG32(rst_dev_h_clr);
-    DEFINE_REG32(rst_dev_u_set);
-    DEFINE_REG32(rst_dev_u_clr);
-    DEFINE_REG32(clk_enb_l_set);
-    DEFINE_REG32(clk_enb_l_clr);
-    DEFINE_REG32(clk_enb_h_set);
-    DEFINE_REG32(clk_enb_h_clr);
-    DEFINE_REG32(clk_enb_u_set);
-    DEFINE_REG32(clk_enb_u_clr);
-    DEFINE_REG32(rst_cpu_cmplx_set);
-    DEFINE_REG32(rst_cpu_cmplx_clr);
     DEFINE_REG32(clk_source_la);
+    DEFINE_REG32(rst_cpu_cmplx_set);
 } tegra_car;
 
 static const VMStateDescription vmstate_tegra_car = {
@@ -239,24 +227,108 @@ static const VMStateDescription vmstate_tegra_car = {
         VMSTATE_UINT32(clk_source_nor.reg32, tegra_car),
         VMSTATE_UINT32(clk_source_csite.reg32, tegra_car),
         VMSTATE_UINT32(clk_source_osc.reg32, tegra_car),
-        VMSTATE_UINT32(rst_dev_l_set.reg32, tegra_car),
-        VMSTATE_UINT32(rst_dev_l_clr.reg32, tegra_car),
-        VMSTATE_UINT32(rst_dev_h_set.reg32, tegra_car),
-        VMSTATE_UINT32(rst_dev_h_clr.reg32, tegra_car),
-        VMSTATE_UINT32(rst_dev_u_set.reg32, tegra_car),
-        VMSTATE_UINT32(rst_dev_u_clr.reg32, tegra_car),
-        VMSTATE_UINT32(clk_enb_l_set.reg32, tegra_car),
-        VMSTATE_UINT32(clk_enb_l_clr.reg32, tegra_car),
-        VMSTATE_UINT32(clk_enb_h_set.reg32, tegra_car),
-        VMSTATE_UINT32(clk_enb_h_clr.reg32, tegra_car),
-        VMSTATE_UINT32(clk_enb_u_set.reg32, tegra_car),
-        VMSTATE_UINT32(clk_enb_u_clr.reg32, tegra_car),
         VMSTATE_UINT32(rst_cpu_cmplx_set.reg32, tegra_car),
-        VMSTATE_UINT32(rst_cpu_cmplx_clr.reg32, tegra_car),
         VMSTATE_UINT32(clk_source_la.reg32, tegra_car),
         VMSTATE_END_OF_LIST()
     }
 };
+
+int tegra_clk_enabled(int id)
+{
+    tegra_car *s = tegra_car_dev;
+    int ret = 0;
+
+    switch (id) {
+    case 0 ... 31:
+        ret = s->clk_out_enb_l.reg32 & (1 << id);
+        break;
+    case 32 ... 63:
+        ret = s->clk_out_enb_h.reg32 & (1 << (id - 32));
+        break;
+    case 64 ... 95:
+        ret = s->clk_out_enb_u.reg32 & (1 << (id - 64));
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    return !!ret;
+}
+
+int tegra_rst_asserted(int id)
+{
+    tegra_car *s = tegra_car_dev;
+    int ret = 0;
+
+    switch (id) {
+    case 0 ... 31:
+        ret = s->rst_devices_l.reg32 & (1 << id);
+        break;
+    case 32 ... 63:
+        ret = s->rst_devices_h.reg32 & (1 << (id - 32));
+        break;
+    case 64 ... 95:
+        ret = s->rst_devices_u.reg32 & (1 << (id - 64));
+        break;
+    default:
+        g_assert_not_reached();
+    }
+
+    return !!ret;
+}
+
+static void set_rst_devices_l(uint32_t value)
+{
+    rst_dev_l_set_t rst = { .reg32 = value };
+
+    if (rst.set_cop_rst) {
+        tegra_cpu_reset_assert(TEGRA2_COP);
+    }
+
+    if (rst.set_trig_sys_rst) {
+        TPRINT("clk_rst reboot request!\n");
+        qemu_system_shutdown_request();
+    }
+
+    if (rst.set_tmr_rst) {
+        TPRINT("car: resetting timers\n");
+        tegra_device_reset( DEVICE(tegra_timer1_dev) );
+        tegra_device_reset( DEVICE(tegra_timer2_dev) );
+        tegra_device_reset( DEVICE(tegra_timer_us_dev) );
+        tegra_device_reset( DEVICE(tegra_timer3_dev) );
+        tegra_device_reset( DEVICE(tegra_timer4_dev) );
+    }
+
+    if (rst.set_gpio_rst) {
+        TPRINT("car: resetting gpio\n");
+        tegra_device_reset( DEVICE(tegra_gpios_dev) );
+    }
+}
+
+static void clr_rst_devices_l(uint32_t value)
+{
+    rst_dev_l_clr_t rst = { .reg32 = value };
+
+    if (rst.clr_cop_rst) {
+        tegra_cpu_reset_deassert(TEGRA2_COP);
+    }
+}
+
+static void set_rst_devices_h(uint32_t value)
+{
+}
+
+static void clr_rst_devices_h(uint32_t value)
+{
+}
+
+static void set_rst_devices_u(uint32_t value)
+{
+}
+
+static void clr_rst_devices_u(uint32_t value)
+{
+}
 
 static uint64_t tegra_car_priv_read(void *opaque, hwaddr offset,
                                     unsigned size)
@@ -270,21 +342,33 @@ static uint64_t tegra_car_priv_read(void *opaque, hwaddr offset,
     case RST_SOURCE_OFFSET:
         ret = s->rst_source.reg32;
         break;
+    case RST_DEV_L_SET_OFFSET:
+    case RST_DEV_L_CLR_OFFSET:
     case RST_DEVICES_L_OFFSET:
         ret = s->rst_devices_l.reg32;
         break;
+    case RST_DEV_H_SET_OFFSET:
+    case RST_DEV_H_CLR_OFFSET:
     case RST_DEVICES_H_OFFSET:
         ret = s->rst_devices_h.reg32;
         break;
+    case RST_DEV_U_SET_OFFSET:
+    case RST_DEV_U_CLR_OFFSET:
     case RST_DEVICES_U_OFFSET:
         ret = s->rst_devices_u.reg32;
         break;
+    case CLK_ENB_L_SET_OFFSET:
+    case CLK_ENB_L_CLR_OFFSET:
     case CLK_OUT_ENB_L_OFFSET:
         ret = s->clk_out_enb_l.reg32;
         break;
+    case CLK_ENB_H_SET_OFFSET:
+    case CLK_ENB_H_CLR_OFFSET:
     case CLK_OUT_ENB_H_OFFSET:
         ret = s->clk_out_enb_h.reg32;
         break;
+    case CLK_ENB_U_SET_OFFSET:
+    case CLK_ENB_U_CLR_OFFSET:
     case CLK_OUT_ENB_U_OFFSET:
         ret = s->clk_out_enb_u.reg32;
         break;
@@ -540,47 +624,9 @@ static uint64_t tegra_car_priv_read(void *opaque, hwaddr offset,
     case CLK_SOURCE_OSC_OFFSET:
         ret = s->clk_source_osc.reg32;
         break;
-    case RST_DEV_L_SET_OFFSET:
-        ret = s->rst_dev_l_set.reg32;
-        break;
-    case RST_DEV_L_CLR_OFFSET:
-        ret = s->rst_dev_l_clr.reg32;
-        break;
-    case RST_DEV_H_SET_OFFSET:
-        ret = s->rst_dev_h_set.reg32;
-        break;
-    case RST_DEV_H_CLR_OFFSET:
-        ret = s->rst_dev_h_clr.reg32;
-        break;
-    case RST_DEV_U_SET_OFFSET:
-        ret = s->rst_dev_u_set.reg32;
-        break;
-    case RST_DEV_U_CLR_OFFSET:
-        ret = s->rst_dev_u_clr.reg32;
-        break;
-    case CLK_ENB_L_SET_OFFSET:
-        ret = s->clk_enb_l_set.reg32;
-        break;
-    case CLK_ENB_L_CLR_OFFSET:
-        ret = s->clk_enb_l_clr.reg32;
-        break;
-    case CLK_ENB_H_SET_OFFSET:
-        ret = s->clk_enb_h_set.reg32;
-        break;
-    case CLK_ENB_H_CLR_OFFSET:
-        ret = s->clk_enb_h_clr.reg32;
-        break;
-    case CLK_ENB_U_SET_OFFSET:
-        ret = s->clk_enb_u_set.reg32;
-        break;
-    case CLK_ENB_U_CLR_OFFSET:
-        ret = s->clk_enb_u_clr.reg32;
-        break;
     case RST_CPU_CMPLX_SET_OFFSET:
-        ret = s->rst_cpu_cmplx_set.reg32;
-        break;
     case RST_CPU_CMPLX_CLR_OFFSET:
-        ret = s->rst_cpu_cmplx_clr.reg32;
+        ret = s->rst_cpu_cmplx_set.reg32;
         break;
     case CLK_SOURCE_LA_OFFSET:
         ret = s->clk_source_la.reg32;
@@ -608,46 +654,42 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
         break;
     case RST_DEVICES_L_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_l.reg32, value);
+
+        set_rst_devices_l(((s->rst_devices_l.reg32 & value) ^ value) & (s->clk_out_enb_l.reg32 | 6));
+        clr_rst_devices_l(s->rst_devices_l.reg32 & ~value & (s->clk_out_enb_l.reg32 | 6));
         s->rst_devices_l.reg32 = value;
-
-        if (s->rst_devices_l.swr_trig_sys_rst) {
-            TPRINT("clk_rst reboot request!\n");
-            qemu_system_shutdown_request();
-        }
-
-        if (s->rst_devices_l.swr_tmr_rst) {
-            TPRINT("car: resetting timers\n");
-            tegra_device_reset( DEVICE(tegra_timer1_dev) );
-            tegra_device_reset( DEVICE(tegra_timer2_dev) );
-            tegra_device_reset( DEVICE(tegra_timer_us_dev) );
-            tegra_device_reset( DEVICE(tegra_timer3_dev) );
-            tegra_device_reset( DEVICE(tegra_timer4_dev) );
-        }
-
-        if (s->rst_devices_l.swr_gpio_rst) {
-            TPRINT("car: resetting gpio\n");
-            tegra_device_reset( DEVICE(tegra_gpios_dev) );
-        }
         break;
     case RST_DEVICES_H_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_h.reg32, value);
+
+        set_rst_devices_h(((s->rst_devices_h.reg32 & value) ^ value) & s->clk_out_enb_h.reg32);
+        clr_rst_devices_h(s->rst_devices_h.reg32 & ~value & s->clk_out_enb_h.reg32);
         s->rst_devices_h.reg32 = value;
         break;
     case RST_DEVICES_U_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_u.reg32, value);
+
+        set_rst_devices_u(((s->rst_devices_u.reg32 & value) ^ value) & s->clk_out_enb_u.reg32);
+        clr_rst_devices_u(s->rst_devices_u.reg32 & ~value & s->clk_out_enb_u.reg32);
         s->rst_devices_u.reg32 = value;
         break;
     case CLK_OUT_ENB_L_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_l.reg32, value);
         s->clk_out_enb_l.reg32 = value;
+
+        set_rst_devices_l(((s->clk_out_enb_l.reg32 & (value | 6)) ^ value) & s->rst_devices_l.reg32);
         break;
     case CLK_OUT_ENB_H_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_h.reg32, value);
         s->clk_out_enb_h.reg32 = value;
+
+        set_rst_devices_h(((s->clk_out_enb_h.reg32 & value) ^ value) & s->rst_devices_h.reg32);
         break;
     case CLK_OUT_ENB_U_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_u.reg32, value);
         s->clk_out_enb_u.reg32 = value;
+
+        set_rst_devices_u(((s->clk_out_enb_u.reg32 & value) ^ value) & s->rst_devices_u.reg32);
         break;
     case CCLK_BURST_POLICY_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->cclk_burst_policy.reg32, value);
@@ -978,98 +1020,103 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
         s->clk_source_osc.reg32 = value;
         break;
     case RST_DEV_L_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_l_set.reg32, value);
-        s->rst_dev_l_set.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_l.reg32, value);
 
-        if (s->rst_dev_l_set.set_cop_rst) {
-            tegra_cpu_reset_assert(TEGRA2_COP);
-        }
-
+        set_rst_devices_l(((s->rst_devices_l.reg32 & value) ^ value) & (s->clk_out_enb_l.reg32 | 6));
+        s->rst_devices_l.reg32 |= value;
         break;
     case RST_DEV_L_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_l_clr.reg32, value);
-        s->rst_dev_l_clr.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_l.reg32, value);
 
-        if (s->rst_dev_l_set.set_tmr_rst & s->rst_dev_l_clr.clr_tmr_rst) {
-            TPRINT("car: resetting timers\n");
-            tegra_device_reset( DEVICE(tegra_timer1_dev) );
-            tegra_device_reset( DEVICE(tegra_timer2_dev) );
-            tegra_device_reset( DEVICE(tegra_timer_us_dev) );
-            tegra_device_reset( DEVICE(tegra_timer3_dev) );
-            tegra_device_reset( DEVICE(tegra_timer4_dev) );
-        }
-
-        if (s->rst_dev_l_set.set_gpio_rst & s->rst_dev_l_clr.clr_gpio_rst) {
-            TPRINT("car: resetting gpio\n");
-            tegra_device_reset( DEVICE(tegra_gpios_dev) );
-        }
-
-        if (s->rst_dev_l_clr.clr_cop_rst) {
-            tegra_cpu_reset_deassert(TEGRA2_COP);
-        }
-
-        s->rst_dev_l_set.reg32 &= ~s->rst_dev_l_clr.reg32;
+        clr_rst_devices_l(s->rst_devices_l.reg32 & value & (s->clk_out_enb_l.reg32 | 6));
+        s->rst_devices_l.reg32 &= ~value;
         break;
     case RST_DEV_H_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_h_set.reg32, value);
-        s->rst_dev_h_set.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_h.reg32, value);
+
+        set_rst_devices_h(((s->rst_devices_h.reg32 & value) ^ value) & s->clk_out_enb_h.reg32);
+        s->rst_devices_h.reg32 |= value;
         break;
     case RST_DEV_H_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_h_clr.reg32, value);
-        s->rst_dev_h_clr.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_h.reg32, value);
+
+        clr_rst_devices_h(s->rst_devices_h.reg32 & value & s->clk_out_enb_h.reg32);
+        s->rst_devices_h.reg32 &= ~value;
         break;
     case RST_DEV_U_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_u_set.reg32, value);
-        s->rst_dev_u_set.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_u.reg32, value);
+
+        set_rst_devices_u(((s->rst_devices_u.reg32 & value) ^ value) & s->clk_out_enb_u.reg32);
+        s->rst_devices_u.reg32 |= value;
         break;
     case RST_DEV_U_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_dev_u_clr.reg32, value);
-        s->rst_dev_u_clr.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_u.reg32, value);
+
+        clr_rst_devices_u(s->rst_devices_u.reg32 & value & s->clk_out_enb_u.reg32);
+        s->rst_devices_u.reg32 &= ~value;
         break;
     case CLK_ENB_L_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->clk_enb_l_set.reg32, value);
-        s->clk_enb_l_set.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_l.reg32, value);
+
+        set_rst_devices_l(((s->clk_out_enb_l.reg32 & (value | 6)) ^ value) & s->rst_devices_l.reg32);
+        s->clk_out_enb_l.reg32 |= value;
         break;
     case CLK_ENB_L_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->clk_enb_l_clr.reg32, value);
-        s->clk_enb_l_clr.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_l.reg32, value);
+        s->clk_out_enb_l.reg32 &= ~value;
         break;
     case CLK_ENB_H_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->clk_enb_h_set.reg32, value);
-        s->clk_enb_h_set.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_h.reg32, value);
+
+        set_rst_devices_h(((s->clk_out_enb_h.reg32 & value) ^ value) & s->rst_devices_h.reg32);
+        s->clk_out_enb_h.reg32 |= value;
         break;
     case CLK_ENB_H_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->clk_enb_h_clr.reg32, value);
-        s->clk_enb_h_clr.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_h.reg32, value);
+        s->clk_out_enb_h.reg32 &= ~value;
         break;
     case CLK_ENB_U_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->clk_enb_u_set.reg32, value);
-        s->clk_enb_u_set.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_u.reg32, value);
+
+        set_rst_devices_u(((s->clk_out_enb_u.reg32 & value) ^ value) & s->rst_devices_u.reg32);
+        s->clk_out_enb_u.reg32 |= value;
         break;
     case CLK_ENB_U_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->clk_enb_u_clr.reg32, value);
-        s->clk_enb_u_clr.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_u.reg32, value);
+        s->clk_out_enb_u.reg32 &= ~value;
         break;
     case RST_CPU_CMPLX_SET_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_cpu_cmplx_set.reg32, value);
-        s->rst_cpu_cmplx_set.reg32 = value;
+    {
+        TRACE_WRITE(s->iomem.addr, offset, 0, value);
+        rst_cpu_cmplx_set_t rst = { .reg32 = value };
 
-        if (s->rst_cpu_cmplx_set.set_cpureset0)
+        s->rst_cpu_cmplx_set.reg32 |= value;
+
+        if (rst.set_cpureset0) {
             tegra_cpu_reset_assert(TEGRA2_A9_CORE0);
+        }
 
-        if (s->rst_cpu_cmplx_set.set_cpureset1)
+        if (rst.set_cpureset1) {
             tegra_cpu_reset_assert(TEGRA2_A9_CORE1);
+        }
         break;
+    }
     case RST_CPU_CMPLX_CLR_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->rst_cpu_cmplx_clr.reg32, value);
-        s->rst_cpu_cmplx_clr.reg32 = value;
+    {
+        TRACE_WRITE(s->iomem.addr, offset, 0, value);
+        rst_cpu_cmplx_clr_t rst = { .reg32 = value };
 
-        if (s->rst_cpu_cmplx_clr.clr_cpureset0)
+        s->rst_cpu_cmplx_set.reg32 &= ~value;
+
+        if (rst.clr_cpureset0) {
             tegra_cpu_reset_deassert(TEGRA2_A9_CORE0);
+        }
 
-        if (s->rst_cpu_cmplx_clr.clr_cpureset1)
+        if (rst.clr_cpureset1) {
             tegra_cpu_reset_deassert(TEGRA2_A9_CORE1);
+        }
         break;
+    }
     case CLK_SOURCE_LA_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_source_la.reg32, value);
         s->clk_source_la.reg32 = value;
@@ -1175,20 +1222,7 @@ static void tegra_car_priv_reset(DeviceState *dev)
     s->clk_source_nor.reg32 = CLK_SOURCE_NOR_RESET;
     s->clk_source_csite.reg32 = CLK_SOURCE_CSITE_RESET;
     s->clk_source_osc.reg32 = CLK_SOURCE_OSC_RESET;
-    s->rst_dev_l_set.reg32 = RST_DEV_L_SET_RESET;
-    s->rst_dev_l_clr.reg32 = RST_DEV_L_CLR_RESET;
-    s->rst_dev_h_set.reg32 = RST_DEV_H_SET_RESET;
-    s->rst_dev_h_clr.reg32 = RST_DEV_H_CLR_RESET;
-    s->rst_dev_u_set.reg32 = RST_DEV_U_SET_RESET;
-    s->rst_dev_u_clr.reg32 = RST_DEV_U_CLR_RESET;
-    s->clk_enb_l_set.reg32 = CLK_ENB_L_SET_RESET;
-    s->clk_enb_l_clr.reg32 = CLK_ENB_L_CLR_RESET;
-    s->clk_enb_h_set.reg32 = CLK_ENB_H_SET_RESET;
-    s->clk_enb_h_clr.reg32 = CLK_ENB_H_CLR_RESET;
-    s->clk_enb_u_set.reg32 = CLK_ENB_U_SET_RESET;
-    s->clk_enb_u_clr.reg32 = CLK_ENB_U_CLR_RESET;
     s->rst_cpu_cmplx_set.reg32 = RST_CPU_CMPLX_SET_RESET;
-    s->rst_cpu_cmplx_clr.reg32 = RST_CPU_CMPLX_CLR_RESET;
     s->clk_source_la.reg32 = CLK_SOURCE_LA_RESET;
 
     /* Enable UARTA */
