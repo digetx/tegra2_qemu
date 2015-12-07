@@ -28,8 +28,8 @@
 
 #include "tegra_cpu_priv.h"
 
-#undef TPRINT
-#define TPRINT(...) {}
+// #undef TPRINT
+// #define TPRINT(...) {}
 
 static int tegra_A9_powergated;
 static int tegra_AVP_powergated;
@@ -118,8 +118,8 @@ void tegra_cpu_reset_deassert(int cpu_id)
     CPUState *cs = qemu_get_cpu(cpu_id);
     ARMCPU *cpu = ARM_CPU(cs);
 
-    TPRINT("%s cpu %d tcpu_in_reset: %d\n",
-           __func__, cpu_id, tcpu_in_reset[cpu_id]);
+    TPRINT("%s cpu %d tcpu_in_reset: %d powered_off: %d\n",
+           __func__, cpu_id, tcpu_in_reset[cpu_id], cpu->powered_off);
 
     if (!tcpu_in_reset[cpu_id]) {
         return;
@@ -128,11 +128,8 @@ void tegra_cpu_reset_deassert(int cpu_id)
     if (!cpu->powered_off)
         return;
 
-    if (tcpu_in_reset[cpu_id]) {
-        tegra_reset_cpu_state(cs);
-    }
-
     tcpu_in_reset[cpu_id] = 0;
+    tegra_reset_cpu_state(cs);
     tegra_cpu_run(cpu_id);
 }
 
