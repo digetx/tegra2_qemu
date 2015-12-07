@@ -19,6 +19,7 @@
 
 #include "hw/sysbus.h"
 
+#include "clk_rst.h"
 #include "tegra_trace.h"
 
 #define TYPE_TEGRA_BSE_DUMMY_2K "tegra.dummy_2k"
@@ -48,6 +49,14 @@ static void tegra_dummy_write(void *opaque, hwaddr offset,
     tegra_dummy *s = opaque;
 
     TRACE_WRITE(s->iomem.addr, offset, s->regs[offset >> 2], value);
+
+    if (tegra_rst_asserted(TEGRA20_CLK_VDE)) {
+        return;
+    }
+
+    if (!tegra_clk_enabled(TEGRA20_CLK_VDE)) {
+        return;
+    }
 
     s->regs[offset >> 2] = value;
 }

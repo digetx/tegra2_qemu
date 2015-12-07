@@ -22,6 +22,7 @@
 #include "crypto/aes.h"
 
 #include "bse.h"
+#include "clk_rst.h"
 #include "iomap.h"
 #include "tegra_trace.h"
 
@@ -368,6 +369,16 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
     int i;
 
     assert(size == 4);
+
+    if (tegra_rst_asserted(TEGRA20_CLK_BSEV)) {
+        TRACE_WRITE(s->iomem.addr, offset, value, value);
+        return;
+    }
+
+    if (!tegra_clk_enabled(TEGRA20_CLK_BSEV)) {
+        TRACE_WRITE(s->iomem.addr, offset, value, value);
+        return;
+    }
 
     switch (offset) {
     case ICMDQUE_WR_OFFSET:
