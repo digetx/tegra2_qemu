@@ -51,9 +51,10 @@
 #define TABLE_IV_OFFSET 240
 #define TABLE_SIZE      256
 
+#define IS_BSEA(base)    (base == (TEGRA_BSEA_BASE + 0x1000))
+
 #define DPRINT(off, fmt, ...)                               \
-do { TPRINT( "%s" fmt ,                                     \
-    off == (TEGRA_BSEA_BASE + 0x1000) ? "BSEA: " : "BSEV: ",\
+do { TPRINT( "%s" fmt , IS_BSEA(off) ? "BSEA: " : "BSEV: ", \
     ## __VA_ARGS__); } while (0)
 
 enum {
@@ -129,7 +130,7 @@ static void tegra_debug_buffer(tegra_bse *s, uint8_t *buf, int sz)
     int i;
 
     for (i = 0; i < sz * AES_BLOCK_SIZE; i++)
-        TPRINT("0x%02X,%s", buf[i],
+        DPRINT(s->iomem.addr, "0x%02X,%s", buf[i],
                ((i + 1) % 16 == 0 || i == sz * AES_BLOCK_SIZE - 1) ? "\n" : " ");
 }
 
@@ -366,16 +367,17 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_bse *s = opaque;
+    int clk_id = IS_BSEA(s->iomem.addr) ? TEGRA20_CLK_BSEA : TEGRA20_CLK_BSEV;
     int i;
 
     assert(size == 4);
 
-    if (tegra_rst_asserted(TEGRA20_CLK_BSEV)) {
+    if (tegra_rst_asserted(clk_id)) {
         TRACE_WRITE(s->iomem.addr, offset, value, value);
         return;
     }
 
-    if (!tegra_clk_enabled(TEGRA20_CLK_BSEV)) {
+    if (!tegra_clk_enabled(clk_id)) {
         TRACE_WRITE(s->iomem.addr, offset, value, value);
         return;
     }
