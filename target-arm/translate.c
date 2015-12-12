@@ -11584,7 +11584,7 @@ done_generating:
     gen_tb_end(tb, num_insns);
 
 #ifdef DEBUG_DISAS
-    if (/*cs->cpu_index == 2 && */qemu_loglevel_mask(CPU_LOG_TB_IN_ASM) && (pc_start >> 28 == 4)) {
+    if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)) {
         qemu_log("----------------\n");
         qemu_log("IN: %s\n", lookup_symbol(pc_start));
         log_target_disas(cs, pc_start, dc->pc - pc_start,
@@ -11615,7 +11615,6 @@ void arm_cpu_dump_state(CPUState *cs, FILE *f, fprintf_function cpu_fprintf,
         return;
     }
 
-    cpu_fprintf(f, "CPU %d ", cs->cpu_index);
     for(i=0;i<16;i++) {
         cpu_fprintf(f, "R%02d=%08x", i, env->regs[i]);
         if ((i % 4) == 3)
