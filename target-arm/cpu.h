@@ -514,6 +514,7 @@ int cpu_arm_exec(CPUState *cpu);
 target_ulong do_arm_semihosting(CPUARMState *env);
 void aarch64_sync_32_to_64(CPUARMState *env);
 void aarch64_sync_64_to_32(CPUARMState *env);
+void __arm_cpu_reset(CPUState *s);
 
 static inline bool is_a64(CPUARMState *env)
 {

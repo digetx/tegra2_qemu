@@ -27,8 +27,8 @@
 
 #include "tegra_cpu_priv.h"
 
-#undef TPRINT
-#define TPRINT(...) {}
+// #undef TPRINT
+// #define TPRINT(...) {}
 
 static volatile int tcpu_halted[TEGRA2_NCPUS];
 
@@ -50,6 +50,8 @@ void tegra_cpu_stop(int cpu_id)
 
     if (tegra_cpu_reset_asserted(cpu_id))
         return;
+
+    TPRINT("%s cpu %d\n", __func__, cpu_id);
 
     cpu->powered_off = 1;
     cpu_interrupt(cs, CPU_INTERRUPT_HALT);
@@ -92,10 +94,15 @@ void tegra_cpu_halt(int cpu_id)
     tcpu_halted[cpu_id] = 1;
 }
 
+int tegra_cpu_halted(int cpu_id)
+{
+    return tcpu_halted[cpu_id] || tegra_cpu_is_powergated(cpu_id);
+}
+
 void tegra_cpu_unhalt(int cpu_id)
 {
     if (!tcpu_halted[cpu_id]) {
-        TPRINT("%s cpu %d NOT HALTED!\n", __func__, cpu_id);
+//         TPRINT("%s cpu %d NOT HALTED!\n", __func__, cpu_id);
         return;
     }
 

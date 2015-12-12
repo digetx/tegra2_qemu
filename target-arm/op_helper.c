@@ -307,7 +307,7 @@ static inline int check_wfx_trap(CPUARMState *env, bool is_wfe)
     return 0;
 }
 
-void __attribute__((weak)) HELPER(wfi)(CPUARMState *env)
+void HELPER(wfi)(CPUARMState *env)
 {
     CPUState *cs = CPU(arm_env_get_cpu(env));
     int target_el = check_wfx_trap(env, false);
@@ -352,11 +352,6 @@ void HELPER(yield)(CPUARMState *env)
      */
     cs->exception_index = EXCP_YIELD;
     cpu_loop_exit(cs);
-}
-
-void __attribute__((weak)) HELPER(sev)(CPUARMState *env)
-{
-    HELPER(yield)(env);
 }
 
 /* Raise an internal-to-QEMU exception. This is limited to only

@@ -73,7 +73,7 @@ static void tegra_reset_cpu_state(CPUState *cs)
 {
     ARMCPU *cpu = ARM_CPU(cs);
 
-    cpu_reset(cs);
+    __arm_cpu_reset(cs);
     cpu->env.thumb = 0;
     CPU_GET_CLASS(cpu)->set_pc(cs, 0xf0010000);
 }
@@ -113,7 +113,7 @@ void tegra_cpu_reset_assert(int cpu_id)
     tcpu_in_reset[cpu_id] = 1;
 }
 
-void tegra_cpu_reset_deassert(int cpu_id)
+void tegra_cpu_reset_deassert(int cpu_id, int flow)
 {
     CPUState *cs = qemu_get_cpu(cpu_id);
     ARMCPU *cpu = ARM_CPU(cs);
@@ -125,8 +125,13 @@ void tegra_cpu_reset_deassert(int cpu_id)
         return;
     }
 
-    if (!cpu->powered_off)
+    if (!flow && tegra_cpu_is_powergated(cpu_id)) {
         return;
+    }
+
+    if (!cpu->powered_off) {
+        return;
+    }
 
     tcpu_in_reset[cpu_id] = 0;
     tegra_reset_cpu_state(cs);
@@ -150,14 +155,11 @@ int tegra_cpu_is_powergated(int cpu_id)
 
 static void tegra_cpu_powergateA9(void)
 {
-    CPUState *cs1 = qemu_get_cpu(TEGRA2_A9_CORE1);
-
     TPRINT("%s\n", __func__);
 
     tegra_dump_cpus_pc();
 
     assert(!tegra_A9_powergated);
-    assert(cs1->halted);
 
     tegra_cpu_reset_assert(TEGRA2_A9_CORE0);
     tegra_a9mpcore_reset();
@@ -170,7 +172,7 @@ static void tegra_cpu_unpowergateA9(void)
 
     assert(tegra_A9_powergated);
 
-    tegra_cpu_reset_deassert(TEGRA2_A9_CORE0);
+    tegra_cpu_reset_deassert(TEGRA2_A9_CORE0, 1);
     tegra_A9_powergated = 0;
 }
 
@@ -190,7 +192,7 @@ static void tegra_cpu_unpowergateAVP(void)
 
     assert(tegra_AVP_powergated);
 
-    tegra_cpu_reset_deassert(TEGRA2_COP);
+    tegra_cpu_reset_deassert(TEGRA2_COP, 1);
     tegra_AVP_powergated = 0;
 }
 

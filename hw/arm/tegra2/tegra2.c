@@ -173,6 +173,10 @@ static void tegra2_create_cpus(void)
     Object *cpuobj = object_new(object_class_get_name(cpu_oc));
     object_property_set_bool(cpuobj, true, "start-powered-off", &error_abort);
     object_property_set_bool(cpuobj, true, "realized", &error_abort);
+
+    set_is_tegra_cpu(TEGRA2_A9_CORE0);
+    set_is_tegra_cpu(TEGRA2_A9_CORE1);
+    set_is_tegra_cpu(TEGRA2_COP);
 }
 
 static void load_memory_images(MachineState *machine)
@@ -573,7 +577,7 @@ static void tegra2_reset(void)
     tegra_trace_init();
     qemu_devices_reset();
 
-    tegra_cpu_reset_deassert(TEGRA2_COP);
+    tegra_cpu_reset_deassert(TEGRA2_COP, 1);
 }
 
 static QemuOptsList qemu_tegra_opts = {

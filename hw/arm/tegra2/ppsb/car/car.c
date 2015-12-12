@@ -310,7 +310,7 @@ static void clr_rst_devices_l(uint32_t value)
     rst_dev_l_clr_t rst = { .reg32 = value };
 
     if (rst.clr_cop_rst) {
-        tegra_cpu_reset_deassert(TEGRA2_COP);
+        tegra_cpu_reset_deassert(TEGRA2_COP, 0);
     }
 }
 
@@ -1109,11 +1109,11 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
         s->rst_cpu_cmplx_set.reg32 &= ~value;
 
         if (rst.clr_cpureset0) {
-            tegra_cpu_reset_deassert(TEGRA2_A9_CORE0);
+            tegra_cpu_reset_deassert(TEGRA2_A9_CORE0, 0);
         }
 
         if (rst.clr_cpureset1) {
-            tegra_cpu_reset_deassert(TEGRA2_A9_CORE1);
+            tegra_cpu_reset_deassert(TEGRA2_A9_CORE1, 0);
         }
         break;
     }

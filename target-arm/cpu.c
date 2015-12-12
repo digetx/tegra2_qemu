@@ -101,13 +101,10 @@ static void cp_reg_check_reset(gpointer key, gpointer value,  gpointer opaque)
 }
 
 /* CPUClass::reset() */
-static void arm_cpu_reset(CPUState *s)
+void __arm_cpu_reset(CPUState *s)
 {
     ARMCPU *cpu = ARM_CPU(s);
-    ARMCPUClass *acc = ARM_CPU_GET_CLASS(cpu);
     CPUARMState *env = &cpu->env;
-
-    acc->parent_reset(s);
 
     memset(env, 0, offsetof(CPUARMState, features));
     g_hash_table_foreach(cpu->cp_regs, cp_reg_reset, cpu);
@@ -223,6 +220,16 @@ static void arm_cpu_reset(CPUState *s)
 
     hw_breakpoint_update_all(cpu);
     hw_watchpoint_update_all(cpu);
+}
+
+static void arm_cpu_reset(CPUState *s)
+{
+    ARMCPU *cpu = ARM_CPU(s);
+    ARMCPUClass *acc = ARM_CPU_GET_CLASS(cpu);
+
+    acc->parent_reset(s);
+
+    __arm_cpu_reset(s);
 }
 
 bool arm_cpu_exec_interrupt(CPUState *cs, int interrupt_request)

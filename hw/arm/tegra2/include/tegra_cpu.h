@@ -30,11 +30,13 @@ enum {
 void tegra_cpu_halt(int cpu_id);
 void tegra_cpu_unhalt(int cpu_id);
 void tegra_cpu_reset_assert(int cpu_id);
-void tegra_cpu_reset_deassert(int cpu_id);
+void tegra_cpu_reset_deassert(int cpu_id, int flow);
 int tegra_cpu_is_powergated(int cpu_id);
 void tegra_cpu_powergate(int cpu_id);
 void tegra_cpu_unpowergate(int cpu_id);
 uint32_t tegra_get_wfe_bitmap(void);
-void tegra_register_wfe_notifier(Notifier *notifier);
-void tegra_unregister_wfe_notifier(Notifier *notifier);
+void tegra_flow_wfe_handle(int cpu_id);
 void tegra_cpu_reset_init(void);
+int tegra_sibling_cpu(int cpu_id);
+int tegra_cpu_halted(int cpu_id);
+void set_is_tegra_cpu(int cpu_id);

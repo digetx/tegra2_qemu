@@ -27,74 +27,64 @@
 
 #define HALT_WFE    0xff
 
-#define IS_SIBLING(a, b)    (tegra_cpu_siblings_bitmap[a] & (1 << b))
+static int tegra_cpus[TEGRA2_NCPUS];
 
-static const uint16_t tegra_cpu_siblings_bitmap[TEGRA2_NCPUS] = {
-    [TEGRA2_A9_CORE0] = (1 << TEGRA2_A9_CORE1),
-    [TEGRA2_A9_CORE1] = (1 << TEGRA2_A9_CORE0),
-    [TEGRA2_COP]  = 0,
-};
-
-static NotifierList wfe_notifier_list =
-            NOTIFIER_LIST_INITIALIZER(wfe_notifier_list);
-
-void tegra_register_wfe_notifier(Notifier *notifier)
+void set_is_tegra_cpu(int cpu_id)
 {
-    notifier_list_add(&wfe_notifier_list, notifier);
+    tegra_cpus[cpu_id] = 1;
 }
 
-void tegra_unregister_wfe_notifier(Notifier *notifier)
+static int is_tegra_cpu(int cpu_id)
 {
-    notifier_remove(notifier);
+    if (cpu_id > TEGRA2_NCPUS) {
+        return 0;
+    }
+
+    return tegra_cpus[cpu_id];
+}
+
+int __attribute__((const)) tegra_sibling_cpu(int cpu_id)
+{
+    switch (cpu_id) {
+    case TEGRA2_A9_CORE0:
+        return TEGRA2_A9_CORE1;
+        break;
+    case TEGRA2_A9_CORE1:
+        return TEGRA2_A9_CORE0;
+        break;
+    }
+
+    return cpu_id;
 }
 
 uint32_t tegra_get_wfe_bitmap(void)
 {
-    CPUState *cs;
     uint32_t wfe_bitmap = 0;
+    int i;
 
-    CPU_FOREACH(cs) {
-        if (cs->halted == HALT_WFE)
-            wfe_bitmap |= 1 << cs->cpu_index;
+    for (i = 0; i < TEGRA2_A9_NCORES; i++) {
+        CPUState *cs = CPU(qemu_get_cpu(i));
+        wfe_bitmap |= (cs->halted == HALT_WFE) << i;
     }
 
     return wfe_bitmap;
 }
 
-void HELPER(sev)(CPUARMState *env)
-{
-    CPUState *cs = CPU(arm_env_get_cpu(env));
-    CPUState *csX;
-
-    CPU_FOREACH(csX) {
-        ARMCPU *cpu = ARM_CPU(csX);
-
-        if (csX == cs || cpu->powered_off)
-            continue;
-
-        if (!IS_SIBLING(cs->cpu_index, csX->cpu_index))
-            continue;
-
-        if (csX->halted == HALT_WFE) {
-//             TPRINT("SEV: kicking cpu %d\n", csX->cpu_index);
-            csX->halted = 0;
-            qemu_cpu_kick(csX);
-        }
-    }
-
-    cpu_loop_exit(cs);
-}
-
 void HELPER(wfe)(CPUARMState *env)
 {
     CPUState *cs = CPU(arm_env_get_cpu(env));
+    int cpu_id = cs->cpu_index;
 
-//     TPRINT("WFE: cpu %d\n", cs->cpu_index);
+    if (is_tegra_cpu(cpu_id)) {
+        TPRINT("WFE: cpu %d\n", cpu_id);
 
-    cs->exception_index = EXCP_HLT;
-    cs->halted = HALT_WFE;
+        cs->halted = HALT_WFE;
 
-    notifier_list_notify(&wfe_notifier_list, cs);
+        tegra_flow_wfe_handle(cpu_id);
 
-    cpu_loop_exit(cs);
+        /* Won't return here if flow powergated CPU.  */
+        cs->halted = 0;
+    }
+
+    HELPER(yield)(env);
 }
