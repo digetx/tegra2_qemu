@@ -1229,6 +1229,14 @@ static void tegra_car_priv_reset(DeviceState *dev)
     s->rst_devices_l.swr_uart1_rst = 0;
     s->clk_out_enb_l.clk_enb_uart1 = 1;
 
+    /* Enable BSEA */
+    s->rst_devices_h.swr_bsea_rst = 0;
+    s->clk_out_enb_h.clk_enb_bsea = 1;
+
+    /* Enable BSEV */
+    s->rst_devices_h.swr_bsev_rst = 0;
+    s->clk_out_enb_h.clk_enb_bsev = 1;
+
     s->osc_freq_det_status.osc_freq_det_cnt = 1587;
 }
 
