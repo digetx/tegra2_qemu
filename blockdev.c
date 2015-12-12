@@ -2258,7 +2258,7 @@ void qmp_eject(const char *device, bool has_force, bool force, Error **errp)
         return;
     }
 
-    qmp_blockdev_remove_medium(device, errp);
+    qmp_x_blockdev_remove_medium(device, errp);
 }
 
 void qmp_block_passwd(bool has_device, const char *device,
@@ -2344,7 +2344,7 @@ void qmp_blockdev_close_tray(const char *device, Error **errp)
     blk_dev_change_media_cb(blk, true);
 }
 
-void qmp_blockdev_remove_medium(const char *device, Error **errp)
+void qmp_x_blockdev_remove_medium(const char *device, Error **errp)
 {
     BlockBackend *blk;
     BlockDriverState *bs;
@@ -2431,8 +2431,8 @@ static void qmp_blockdev_insert_anon_medium(const char *device,
     QTAILQ_INSERT_TAIL(&bdrv_states, bs, device_list);
 }
 
-void qmp_blockdev_insert_medium(const char *device, const char *node_name,
-                                Error **errp)
+void qmp_x_blockdev_insert_medium(const char *device, const char *node_name,
+                                  Error **errp)
 {
     BlockDriverState *bs;
 
@@ -2521,7 +2521,7 @@ void qmp_blockdev_change_medium(const char *device, const char *filename,
         goto fail;
     }
 
-    qmp_blockdev_remove_medium(device, &err);
+    qmp_x_blockdev_remove_medium(device, &err);
     if (err) {
         error_propagate(errp, err);
         goto fail;

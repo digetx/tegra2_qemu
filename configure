@@ -727,6 +727,8 @@ if test "$mingw32" = "yes" ; then
   QEMU_CFLAGS="-DWIN32_LEAN_AND_MEAN -DWINVER=0x501 $QEMU_CFLAGS"
   # enable C99/POSIX format strings (needs mingw32-runtime 3.15 or later)
   QEMU_CFLAGS="-D__USE_MINGW_ANSI_STDIO=1 $QEMU_CFLAGS"
+  # MinGW needs -mthreads for TLS and macro _MT.
+  QEMU_CFLAGS="-mthreads $QEMU_CFLAGS"
   LIBS="-lwinmm -lws2_32 -liphlpapi $LIBS"
   write_c_skeleton;
   if compile_prog "" "-liberty" ; then
@@ -1426,6 +1428,9 @@ if compile_object ; then
 else
     error_exit "\"$cc\" either does not exist or does not work"
 fi
+if ! compile_prog ; then
+    error_exit "\"$cc\" cannot build an executable (is your linker broken?)"
+fi
 
 # Check that the C++ compiler exists and works with the C compiler
 if has $cxx; then
@@ -1486,6 +1491,16 @@ for flag in $gcc_flags; do
 done
 
 if test "$stack_protector" != "no"; then
+  cat > $TMPC << EOF
+int main(int argc, char *argv[])
+{
+    char arr[64], *p = arr, *c = argv[0];
+    while (*c) {
+        *p++ = *c++;
+    }
+    return 0;
+}
+EOF
   gcc_flags="-fstack-protector-strong -fstack-protector-all"
   sp_on=0
   for flag in $gcc_flags; do
@@ -1943,6 +1958,23 @@ EOF
     xen=no
 
   # Xen unstable
+  elif
+      cat > $TMPC <<EOF &&
+#include <xenctrl.h>
+#include <stdint.h>
+int main(void) {
+  xc_interface *xc = NULL;
+  xen_domain_handle_t handle;
+  xc_domain_create(xc, 0, handle, 0, NULL, NULL);
+  return 0;
+}
+EOF
+      compile_prog "" "$xen_libs"
+    then
+    xen_ctrl_version=470
+    xen=yes
+
+  # Xen 4.6
   elif
       cat > $TMPC <<EOF &&
 #include <xenctrl.h>

@@ -931,6 +931,11 @@ static void vnc_dpy_copy(DisplayChangeListener *dcl,
     int i, x, y, pitch, inc, w_lim, s;
     int cmp_bytes;
 
+    if (!vd->server) {
+        /* no client connected */
+        return;
+    }
+
     vnc_refresh_server_surface(vd);
     QTAILQ_FOREACH_SAFE(vs, &vd->clients, next, vn) {
         if (vnc_has_feature(vs, VNC_FEATURE_COPYRECT)) {
@@ -2193,15 +2198,15 @@ static void set_pixel_format(VncState *vs,
         return;
     }
 
-    vs->client_pf.rmax = red_max;
+    vs->client_pf.rmax = red_max ? red_max : 0xFF;
     vs->client_pf.rbits = hweight_long(red_max);
     vs->client_pf.rshift = red_shift;
     vs->client_pf.rmask = red_max << red_shift;
-    vs->client_pf.gmax = green_max;
+    vs->client_pf.gmax = green_max ? green_max : 0xFF;
     vs->client_pf.gbits = hweight_long(green_max);
     vs->client_pf.gshift = green_shift;
     vs->client_pf.gmask = green_max << green_shift;
-    vs->client_pf.bmax = blue_max;
+    vs->client_pf.bmax = blue_max ? blue_max : 0xFF;
     vs->client_pf.bbits = hweight_long(blue_max);
     vs->client_pf.bshift = blue_shift;
     vs->client_pf.bmask = blue_max << blue_shift;

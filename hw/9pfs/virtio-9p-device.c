@@ -116,10 +116,6 @@ static void virtio_9p_device_realize(DeviceState *dev, Error **errp)
                    " and export path:%s", s->fsconf.fsdev_id, s->ctx.fs_root);
         goto out;
     }
-    if (v9fs_init_worker_threads() < 0) {
-        error_setg(errp, "worker thread initialization failed");
-        goto out;
-    }
 
     /*
      * Check details of export path, We need to use fs driver
@@ -149,6 +145,17 @@ out:
     v9fs_path_free(&path);
 }
 
+static void virtio_9p_device_unrealize(DeviceState *dev, Error **errp)
+{
+    VirtIODevice *vdev = VIRTIO_DEVICE(dev);
+    V9fsState *s = VIRTIO_9P(dev);
+
+    virtio_cleanup(vdev);
+    unregister_savevm(dev, "virtio-9p", s);
+    g_free(s->ctx.fs_root);
+    g_free(s->tag);
+}
+
 /* virtio-9p device */
 
 static Property virtio_9p_properties[] = {
@@ -165,6 +172,7 @@ static void virtio_9p_class_init(ObjectClass *klass, void *data)
     dc->props = virtio_9p_properties;
     set_bit(DEVICE_CATEGORY_STORAGE, dc->categories);
     vdc->realize = virtio_9p_device_realize;
+    vdc->unrealize = virtio_9p_device_unrealize;
     vdc->get_features = virtio_9p_get_features;
     vdc->get_config = virtio_9p_get_config;
 }

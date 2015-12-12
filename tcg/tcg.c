@@ -388,7 +388,11 @@ void tcg_prologue_init(TCGContext *s)
     /* Compute a high-water mark, at which we voluntarily flush the buffer
        and start over.  The size here is arbitrary, significantly larger
        than we expect the code generation for any one opcode to require.  */
-    s->code_gen_highwater = s->code_gen_buffer + (total_size - 1024);
+    /* ??? We currently have no good estimate for, or checks in,
+       tcg_out_tb_finalize.  If there are quite a lot of guest memory ops,
+       the number of out-of-line fragments could be quite high.  In the
+       short-term, increase the highwater buffer.  */
+    s->code_gen_highwater = s->code_gen_buffer + (total_size - 64*1024);
 
     tcg_register_jit(s->code_gen_buffer, total_size);
 
@@ -2443,7 +2447,7 @@ int tcg_gen_code(TCGContext *s, tcg_insn_unit *gen_code_buf)
            one operation beginning below the high water mark cannot overrun
            the buffer completely.  Thus we can test for overflow after
            generating code without having to check during generation.  */
-        if (unlikely(s->code_gen_ptr > s->code_gen_highwater)) {
+        if (unlikely((void *)s->code_ptr > s->code_gen_highwater)) {
             return -1;
         }
     }

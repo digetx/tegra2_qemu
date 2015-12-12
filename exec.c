@@ -51,7 +51,6 @@
 #include "qemu/main-loop.h"
 #include "translate-all.h"
 #include "sysemu/replay.h"
-#include "sysemu/qtest.h"
 
 #include "exec/memory-internal.h"
 #include "exec/ram_addr.h"
@@ -1065,9 +1064,11 @@ static uint16_t phys_section_add(PhysPageMap *map,
 
 static void phys_section_destroy(MemoryRegion *mr)
 {
+    bool have_sub_page = mr->subpage;
+
     memory_region_unref(mr);
 
-    if (mr->subpage) {
+    if (have_sub_page) {
         subpage_t *subpage = container_of(mr, subpage_t, iomem);
         object_unref(OBJECT(&subpage->iomem));
         g_free(subpage);
@@ -1195,11 +1196,6 @@ static long gethugepagesize(const char *path, Error **errp)
         error_setg_errno(errp, errno, "failed to get page size of file %s",
                          path);
         return 0;
-    }
-
-    if (!qtest_driver() &&
-        fs.f_type != HUGETLBFS_MAGIC) {
-        fprintf(stderr, "Warning: path not on HugeTLBFS: %s\n", path);
     }
 
     return fs.f_bsize;
