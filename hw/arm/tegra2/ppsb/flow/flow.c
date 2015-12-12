@@ -472,14 +472,14 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
         return;
     }
 
-    if ((cpu_id != TEGRA2_COP) && !in_wfe) {
-        return;
-    }
-
-    if (s->halt_events[cpu_id].mode & WAITEVENT) {
+    if ((s->halt_events[cpu_id].mode & WAITEVENT) && !in_wfe) {
         if (!tegra_flow_arm_event(s, cpu_id)) {
             tegra_flow_clear_waitevent(s, cpu_id);
         }
+    }
+
+    if ((cpu_id != TEGRA2_COP) && !in_wfe) {
+        return;
     }
 
     if (s->halt_events[cpu_id].mode & WAIT_IRQ) {
