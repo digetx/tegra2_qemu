@@ -517,6 +517,9 @@ static void tegra_flow_csr_write(tegra_flow *s, hwaddr offset,
         switch (cpu_id) {
         case TEGRA2_A9_CORE0:
         case TEGRA2_A9_CORE1:
+            if (s->csr[ tegra_sibling_cpu(cpu_id) ].intr_flag) {
+                break;
+            }
             TRACE_IRQ_LOWER(s->iomem.addr, s->irq_cpu_event);
             break;
         case TEGRA2_COP:
