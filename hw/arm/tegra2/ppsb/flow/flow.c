@@ -433,15 +433,12 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
 //            tegra_flow_mode_name(mode), in_wfe, cpu_id);
 
     if (in_wfe) {
+        CPUState *cs = CPU(qemu_get_cpu(cpu_id));
         int sibling = tegra_sibling_cpu(cpu_id);
 
-        if (tegra_flow_powergate(s, cpu_id)) {
-            CPUState *cs = CPU(qemu_get_cpu(cpu_id));
-            cpu_loop_exit(cs);
-        }
-
-        if (tegra_flow_powergate(s, sibling)) {
-            CPUState *cs = CPU(qemu_get_cpu(sibling));
+        if (tegra_flow_powergate(s, cpu_id) ||
+            tegra_flow_powergate(s, sibling))
+        {
             cpu_loop_exit(cs);
         }
     }
