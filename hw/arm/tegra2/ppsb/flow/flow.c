@@ -123,21 +123,27 @@ static int tegra_flow_have_pending_irq(int cpu_id)
     return 0;
 }
 
-static int tegra_flow_arm_event(tegra_flow *s, int cpu_id)
+static int tegra_flow_arm_event(tegra_flow *s, int cpu_id, int wait)
 {
     int ev_cnt = s->halt_events[cpu_id].zero;
     int unimplemented = 1;
+
+    if (s->csr[cpu_id].event_flag) {
+        if (cpu_id != TEGRA2_COP) {
+            goto fired;
+        }
+    }
 
     if (s->halt_events[cpu_id].irq_0) {
         int sibling = tegra_sibling_cpu(cpu_id);
 
         if (tegra_flow_have_pending_irq(cpu_id)) {
-            return 0;
+            goto fired;
         }
 
         if (sibling != cpu_id) {
             if (tegra_flow_have_pending_irq(sibling)) {
-                return 0;
+                goto fired;
             }
         }
 
@@ -146,7 +152,7 @@ static int tegra_flow_arm_event(tegra_flow *s, int cpu_id)
 
     if (s->halt_events[cpu_id].irq_1) {
         if (tegra_flow_have_pending_irq(TEGRA2_COP)) {
-            return 0;
+            goto fired;
         }
 
         unimplemented = 0;
@@ -193,9 +199,14 @@ static int tegra_flow_arm_event(tegra_flow *s, int cpu_id)
     }
 
 armed:
-    s->csr[cpu_id].wait_event = 1;
+    s->csr[cpu_id].wait_event = !!wait;
 
     return 1;
+
+fired:
+    s->csr[cpu_id].event_flag = 1;
+
+    return 0;
 }
 
 static void tegra_flow_gen_interrupt(tegra_flow *s, int cpu_id)
@@ -211,20 +222,24 @@ static void tegra_flow_gen_interrupt(tegra_flow *s, int cpu_id)
     }
 }
 
-static void tegra_flow_clear_waitevent(tegra_flow *s, int cpu_id)
+static void tegra_flow_clear_waitevent(tegra_flow *s, int cpu_id, int clr_wait)
 {
-    s->halt_events[cpu_id].mode &= ~WAITEVENT;
     s->csr[cpu_id].event_flag = 1;
     ptimer_stop(s->ptimer[cpu_id]);
-    s->csr[cpu_id].wait_event = 0;
+
+    if (s->halt_events[cpu_id].mode & INTERRUPT) {
+        tegra_flow_gen_interrupt(s, cpu_id);
+    }
 
     if (cpu_id == TEGRA2_COP && s->cop_stalled) {
+        s->csr[TEGRA2_COP].wait_event = 0;
         s->cop_stalled = 0;
         return;
     }
 
-    if (s->halt_events[cpu_id].mode & INTERRUPT) {
-        tegra_flow_gen_interrupt(s, cpu_id);
+    if (clr_wait) {
+        s->halt_events[cpu_id].mode &= ~WAITEVENT;
+        s->csr[cpu_id].wait_event = 0;
     }
 }
 
@@ -279,8 +294,8 @@ static uint64_t tegra_flow_priv_read(void *opaque, hwaddr offset,
 
             TPRINT("COP stalled");
 
-            if (!tegra_flow_arm_event(s, TEGRA2_COP)) {
-                tegra_flow_clear_waitevent(s, TEGRA2_COP);
+            if (!tegra_flow_arm_event(s, TEGRA2_COP, 1)) {
+                tegra_flow_clear_waitevent(s, TEGRA2_COP, 0);
             } else {
                 tegra_cpu_halt(TEGRA2_COP);
             }
@@ -307,16 +322,24 @@ void tegra_flow_on_irq(int cpu_id)
 //     TPRINT("%s cpu %d\n", __func__, cpu_id);
 
     CPU_FOREACH(csX) {
-        if (!(s->csr[csX->cpu_index].wait_event)) {
+        int cpu_idX = csX->cpu_index;
+
+        if (!(s->csr[cpu_idX].wait_event)) {
             continue;
         }
 
+        if (s->csr[cpu_idX].event_flag) {
+            if (cpu_idX != TEGRA2_COP) {
+                goto event;
+            }
+        }
+
         if (cpu_id != TEGRA2_COP) {
-            if (s->halt_events[csX->cpu_index].irq_0) {
+            if (s->halt_events[cpu_idX].irq_0) {
                 goto event;
             }
         } else {
-            if (s->halt_events[csX->cpu_index].irq_1) {
+            if (s->halt_events[cpu_idX].irq_1) {
                 goto event;
             }
         }
@@ -324,10 +347,10 @@ void tegra_flow_on_irq(int cpu_id)
         continue;
 
 event:
-        tegra_flow_clear_waitevent(s, csX->cpu_index);
+        tegra_flow_clear_waitevent(s, cpu_idX, tegra_cpu_halted(cpu_idX));
 
-        if (!(s->halt_events[csX->cpu_index].mode & STOP)) {
-            tegra_flow_run_cpu(csX->cpu_index);
+        if (!(s->halt_events[cpu_idX].mode & STOP)) {
+            tegra_flow_run_cpu(cpu_idX);
         }
     }
 
@@ -391,7 +414,7 @@ static void tegra_flow_timer_event(void *opaque)
         return;
     }
 
-    tegra_flow_clear_waitevent(s, cpu_id);
+    tegra_flow_clear_waitevent(s, cpu_id, tegra_cpu_halted(cpu_id));
 
     if (!(s->halt_events[cpu_id].mode & STOP)) {
         tegra_flow_run_cpu(cpu_id);
@@ -422,9 +445,9 @@ static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
 
     tegra_cpu_powergate(cpu_id);
 
-    if ((s->halt_events[cpu_id].mode & WAITEVENT)) {
-        if (!tegra_flow_arm_event(s, cpu_id)) {
-            tegra_flow_clear_waitevent(s, cpu_id);
+    if (s->halt_events[cpu_id].mode & WAITEVENT) {
+        if (!tegra_flow_arm_event(s, cpu_id, 1)) {
+            tegra_flow_clear_waitevent(s, cpu_id, 1);
         }
     }
 
@@ -445,6 +468,8 @@ static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
 
 static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
 {
+    int is_cop = (cpu_id == TEGRA2_COP);
+
 //     TPRINT("%s mode=%s in_wfe=%d cpu %d\n", __func__,
 //            tegra_flow_mode_name(mode), in_wfe, cpu_id);
 
@@ -464,7 +489,7 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
 
     switch (s->halt_events[cpu_id].mode) {
     case FLOW_MODE_RUN_AND_INT:
-        if (!tegra_flow_arm_event(s, cpu_id)) {
+        if (!tegra_flow_arm_event(s, cpu_id, 0)) {
             tegra_flow_gen_interrupt(s, cpu_id);
         }
     case FLOW_MODE_NONE:
@@ -472,13 +497,15 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
         return;
     }
 
-    if ((s->halt_events[cpu_id].mode & WAITEVENT) && !in_wfe) {
-        if (!tegra_flow_arm_event(s, cpu_id)) {
-            tegra_flow_clear_waitevent(s, cpu_id);
+    if (s->halt_events[cpu_id].mode & WAITEVENT) {
+        int wait = (is_cop || in_wfe);
+
+        if (!tegra_flow_arm_event(s, cpu_id, wait)) {
+            tegra_flow_clear_waitevent(s, cpu_id, wait);
         }
     }
 
-    if ((cpu_id != TEGRA2_COP) && !in_wfe) {
+    if (!is_cop && !in_wfe) {
         return;
     }
 
