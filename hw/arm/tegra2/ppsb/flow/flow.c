@@ -18,8 +18,6 @@
  */
 
 #include "hw/arm/arm.h"
-#include "hw/cpu/a9mpcore.h"
-#include "hw/intc/gic_internal.h"
 #include "hw/ptimer.h"
 #include "hw/sysbus.h"
 #include "exec/address-spaces.h"
@@ -96,33 +94,6 @@ typedef struct tegra_flow_timer_arg {
     int cpu_id;
 } tegra_flow_timer_arg;
 
-static int tegra_flow_have_pending_irq(int cpu_id)
-{
-    A9MPPrivState *a9mpcore = A9MPCORE_PRIV(tegra_a9mpcore_dev);
-    GICState *s = &a9mpcore->gic;
-    int i;
-
-    if (tegra_ictlr_is_irq_pending_on_cpu(cpu_id)) {
-        return 1;
-    }
-
-    if (cpu_id == TEGRA2_COP) {
-        return 0;
-    }
-
-    for (i = INT_CPU_IRQS_NR; i < INT_GIC_NR; i++) {
-        if (!GIC_TEST_ENABLED(i, 1 << cpu_id))
-            continue;
-
-        if (gic_test_pending(s, i, 1 << cpu_id)) {
-            TPRINT("tegra_flow: irq %d pending\n", i);
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
 static int tegra_flow_arm_event(tegra_flow *s, int cpu_id, int wait)
 {
     int ev_cnt = s->halt_events[cpu_id].zero;
@@ -135,23 +106,15 @@ static int tegra_flow_arm_event(tegra_flow *s, int cpu_id, int wait)
     }
 
     if (s->halt_events[cpu_id].irq_0) {
-        int sibling = tegra_sibling_cpu(cpu_id);
-
-        if (tegra_flow_have_pending_irq(cpu_id)) {
+        if (tegra_ictlr_is_irq_pending_on_cpu(TEGRA2_A9_CORE0)) {
             goto fired;
-        }
-
-        if (sibling != cpu_id) {
-            if (tegra_flow_have_pending_irq(sibling)) {
-                goto fired;
-            }
         }
 
         unimplemented = 0;
     }
 
     if (s->halt_events[cpu_id].irq_1) {
-        if (tegra_flow_have_pending_irq(TEGRA2_COP)) {
+        if (tegra_ictlr_is_irq_pending_on_cpu(TEGRA2_COP)) {
             goto fired;
         }
 
@@ -423,8 +386,6 @@ static void tegra_flow_timer_event(void *opaque)
 
 static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
 {
-    int sibling = tegra_sibling_cpu(cpu_id);
-
     if (!s->csr[cpu_id].enable) {
         return 0;
     }
@@ -452,9 +413,7 @@ static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
     }
 
     if (s->halt_events[cpu_id].mode & WAIT_IRQ) {
-        if (tegra_flow_have_pending_irq(cpu_id) ||
-            tegra_flow_have_pending_irq(sibling))
-        {
+        if (tegra_ictlr_is_irq_pending_on_cpu(cpu_id)) {
             s->halt_events[cpu_id].mode &= ~WAIT_IRQ;
         }
     }
@@ -510,7 +469,7 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
     }
 
     if (s->halt_events[cpu_id].mode & WAIT_IRQ) {
-        if (tegra_flow_have_pending_irq(cpu_id)) {
+        if (tegra_ictlr_is_irq_pending_on_cpu(cpu_id)) {
             s->halt_events[cpu_id].mode &= ~WAIT_IRQ;
         }
     }
