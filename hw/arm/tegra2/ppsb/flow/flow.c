@@ -106,7 +106,7 @@ static int tegra_flow_have_pending_irq(int cpu_id)
         return 1;
     }
 
-    if (cpu_id == TEGRA2_COP) {
+    if (cpu_id == TEGRA2_COP || tegra_cpu_is_powergated(cpu_id)) {
         return 0;
     }
 
