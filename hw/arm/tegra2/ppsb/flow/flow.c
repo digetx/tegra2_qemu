@@ -421,10 +421,8 @@ static void tegra_flow_timer_event(void *opaque)
     }
 }
 
-static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
+static int tegra_flow_powergate(tegra_flow *s, int cpu_id, int is_sibling)
 {
-    int sibling = tegra_sibling_cpu(cpu_id);
-
     if (!s->csr[cpu_id].enable) {
         return 0;
     }
@@ -441,6 +439,8 @@ static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
 //             tegra_cpu_halt(cpu_id);
             return 0;
         }
+    } else if (is_sibling) {
+        return 0;
     }
 
     tegra_cpu_powergate(cpu_id);
@@ -452,9 +452,7 @@ static int tegra_flow_powergate(tegra_flow *s, int cpu_id)
     }
 
     if (s->halt_events[cpu_id].mode & WAIT_IRQ) {
-        if (tegra_flow_have_pending_irq(cpu_id) ||
-            tegra_flow_have_pending_irq(sibling))
-        {
+        if (tegra_flow_have_pending_irq(cpu_id)) {
             s->halt_events[cpu_id].mode &= ~WAIT_IRQ;
         }
     }
@@ -477,8 +475,8 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
         CPUState *cs = CPU(qemu_get_cpu(cpu_id));
         int sibling = tegra_sibling_cpu(cpu_id);
 
-        if (tegra_flow_powergate(s, cpu_id) ||
-            tegra_flow_powergate(s, sibling))
+        if (tegra_flow_powergate(s, cpu_id, 0) ||
+            tegra_flow_powergate(s, sibling, 1))
         {
             cpu_loop_exit(cs);
         }
