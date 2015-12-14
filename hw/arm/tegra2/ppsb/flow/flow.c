@@ -482,14 +482,16 @@ static void tegra_flow_update_mode(tegra_flow *s, int cpu_id, int in_wfe)
         }
     }
 
-    switch (s->halt_events[cpu_id].mode) {
-    case FLOW_MODE_RUN_AND_INT:
-        if (!tegra_flow_arm_event(s, cpu_id, 0)) {
-            tegra_flow_gen_interrupt(s, cpu_id);
+    if (!in_wfe) {
+        switch (s->halt_events[cpu_id].mode) {
+        case FLOW_MODE_RUN_AND_INT:
+            if (!tegra_flow_arm_event(s, cpu_id, 0)) {
+                tegra_flow_gen_interrupt(s, cpu_id);
+            }
+        case FLOW_MODE_NONE:
+            tegra_cpu_unhalt(cpu_id);
+            return;
         }
-    case FLOW_MODE_NONE:
-        tegra_cpu_unhalt(cpu_id);
-        return;
     }
 
     if (s->halt_events[cpu_id].mode & WAITEVENT) {
