@@ -32,8 +32,26 @@ struct IRQState {
     int n;
 };
 
-#define TRACE_READ(a, o, v) tegra_trace_write(a, o, v, 0, 0)
-#define TRACE_WRITE(a, o, v, n) tegra_trace_write(a, o, v, n, 1)
+typedef union tegra_trace_rw_u {
+    struct {
+        unsigned int rw:1;
+        unsigned int clk_disabled:1;
+        unsigned int in_reset:1;
+    };
+
+    uint32_t val;
+} tegra_trace_rw_t;
+
+static inline uint32_t ttrw(int rw, int c, int r)
+{
+    tegra_trace_rw_t ret = {.rw = rw, .clk_disabled = c, .in_reset = r};
+    return ret.val;
+}
+
+#define TRACE_READ(a, o, v) tegra_trace_write(a, o, v, 0, ttrw(0,0,0))
+#define TRACE_WRITE(a, o, v, n) tegra_trace_write(a, o, v, n, ttrw(1,0,0))
+#define TRACE_READ_EXT(a, o, v, c, r) tegra_trace_write(a, o, v, 0, ttrw(0,c,r))
+#define TRACE_WRITE_EXT(a, o, v, n, c, r) tegra_trace_write(a, o, v, n, ttrw(1,c,r))
 #define TRACE_IRQ_RAISE(a, i) do {tegra_trace_irq(a, i->n, 1); qemu_irq_raise(i);} while (0)
 #define TRACE_IRQ_LOWER(a, i) do {tegra_trace_irq(a, i->n, 0); qemu_irq_lower(i);} while (0)
 #define TRACE_IRQ_SET(a, i, v) do {tegra_trace_irq(a, (i)->n, v); qemu_set_irq(i,v);} while (0)
@@ -44,6 +62,8 @@ struct IRQState {
 #else
 #define TRACE_READ(a, o, v) do {} while (0)
 #define TRACE_WRITE(a, o, v, n) do {} while (0)
+#define TRACE_READ_EXT(a, o, v, c, r) do {(void)(c); (void)(r);} while (0)
+#define TRACE_WRITE_EXT(a, o, v, n, c, r) do {(void)(c); (void)(r);} while (0)
 #define TRACE_IRQ_RAISE(a, i) do {qemu_irq_raise(i);} while (0)
 #define TRACE_IRQ_LOWER(a, i) do {qemu_irq_lower(i);} while (0)
 #define TRACE_IRQ_SET(a, i, v) do {qemu_set_irq(i,v);} while (0)

@@ -31,6 +31,7 @@
 #define HOST1X_CDMA	0x1010
 
 #define PACKET_TRACE_RW 0x11111111
+#define PACKET_TRACE_RW_V2 0x11111112
 struct __attribute__((packed, aligned(1))) trace_pkt_rw {
     uint32_t magic;
     uint32_t hwaddr;
@@ -130,7 +131,7 @@ void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
     uint32_t time = qemu_clock_get_us(QEMU_CLOCK_VIRTUAL);
     uint32_t cpu_id = host1x_cdma_ptr ? HOST1X_CDMA : (cs ? cs->cpu_index : 0xFF);
     struct trace_pkt_rw W = {
-        htonl(PACKET_TRACE_RW),
+        htonl((is_write > 1) ? PACKET_TRACE_RW_V2 : PACKET_TRACE_RW),
         htonl(hwaddr),
         htonl(offset),
         htonl(value),
