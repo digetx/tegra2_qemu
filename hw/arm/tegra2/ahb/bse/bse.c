@@ -138,8 +138,15 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
                                     unsigned size)
 {
     tegra_bse *s = opaque;
+    int clk_id = IS_BSEA(s->iomem.addr) ? TEGRA20_CLK_BSEA : TEGRA20_CLK_BSEV;
+    int rst_set = tegra_rst_asserted(clk_id);
+    int clk_en = tegra_clk_enabled(clk_id);
     uint64_t ret = 0;
     int i;
+
+    if (clk_id == TEGRA20_CLK_BSEV) {
+        clk_en |= tegra_clk_enabled(TEGRA20_CLK_VDE);
+    }
 
     assert(size == 4);
 
@@ -182,7 +189,7 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
         break;
     }
 
-    TRACE_READ(s->iomem.addr, offset, ret);
+    TRACE_READ_EXT(s->iomem.addr, offset, ret, !clk_en, rst_set);
 
     return ret;
 }
@@ -368,17 +375,19 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
 {
     tegra_bse *s = opaque;
     int clk_id = IS_BSEA(s->iomem.addr) ? TEGRA20_CLK_BSEA : TEGRA20_CLK_BSEV;
+    int rst_set = tegra_rst_asserted(clk_id);
+    int clk_en = tegra_clk_enabled(clk_id);
     int i;
 
     assert(size == 4);
 
-    if (tegra_rst_asserted(clk_id)) {
-        TRACE_WRITE(s->iomem.addr, offset, value, value);
-        return;
+    if (clk_id == TEGRA20_CLK_BSEV) {
+        clk_en |= tegra_clk_enabled(TEGRA20_CLK_VDE);
+        rst_set |= tegra_rst_asserted(TEGRA20_CLK_VDE);
     }
 
-    if (!tegra_clk_enabled(clk_id)) {
-        TRACE_WRITE(s->iomem.addr, offset, value, value);
+    if (!clk_en || rst_set) {
+        TRACE_WRITE_EXT(s->iomem.addr, offset, value, value, !clk_en, rst_set);
         return;
     }
 

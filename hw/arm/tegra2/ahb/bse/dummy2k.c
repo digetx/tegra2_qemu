@@ -37,8 +37,10 @@ static uint64_t tegra_dummy_read(void *opaque, hwaddr offset,
 {
     tegra_dummy *s = opaque;
     uint32_t ret = s->regs[offset >> 2];
+    int rst_set = tegra_rst_asserted(TEGRA20_CLK_VDE);
+    int clk_en = tegra_clk_enabled(TEGRA20_CLK_VDE);
 
-    TRACE_READ(s->iomem.addr, offset, ret);
+    TRACE_READ_EXT(s->iomem.addr, offset, ret, !clk_en, rst_set);
 
     return ret;
 }
@@ -47,8 +49,11 @@ static void tegra_dummy_write(void *opaque, hwaddr offset,
                               uint64_t value, unsigned size)
 {
     tegra_dummy *s = opaque;
+    int rst_set = tegra_rst_asserted(TEGRA20_CLK_VDE);
+    int clk_en = tegra_clk_enabled(TEGRA20_CLK_VDE);
 
-    TRACE_WRITE(s->iomem.addr, offset, s->regs[offset >> 2], value);
+    TRACE_WRITE_EXT(s->iomem.addr, offset, s->regs[offset >> 2], value,
+                    !clk_en, rst_set);
 
     if (tegra_rst_asserted(TEGRA20_CLK_VDE)) {
         return;
