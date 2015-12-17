@@ -208,4 +208,51 @@ typedef union secure_sec_sel_u {
 
 #define SECURE_SEC_SEL7_OFFSET 0x15C
 
+#define CMD_BLKSTARTENGINE  0x0E
+#define CMD_DMASETUP        0x10
+#define CMD_DMACOMPLETE     0x11
+#define CMD_SETTABLE        0x15
+#define CMD_MEMDMAVD        0x22
+
+#define SUBCMD_VRAM_SEL             0x1
+#define SUBCMD_CRYPTO_TABLE_SEL     0x3
+#define SUBCMD_KEY_SCHED_TABLE_SEL  0x4
+#define SUBCMD_KEY_TABLE_SEL        0x8
+
+#define XOR_DISABLED    0
+#define XOR_TOP         2
+#define XOR_BOTTOM      3
+
+#define TABLE_IV_OFFSET 240
+#define TABLE_SIZE      256
+
+#define SLOTS_MAX_NB    8
+
+#define DEFINE_REG32(reg) reg##_t reg
+
+typedef struct tegra_bse_state {
+    SysBusDevice parent_obj;
+
+    qemu_irq irq;
+
+    uint32_t state;
+    uint8_t aes_key[SLOTS_MAX_NB][32];
+    uint8_t aes_iv[SLOTS_MAX_NB][AES_BLOCK_SIZE];
+    uint32_t src_addr;
+    bool has_key_sched_gen;
+    uint8_t hw_key_sched_length;
+
+    MemoryRegion iomem;
+    DEFINE_REG32(cmdque_control);
+    DEFINE_REG32(intr_status);
+    DEFINE_REG32(bse_config);
+    DEFINE_REG32(secure_dest_addr);
+    DEFINE_REG32(secure_input_select);
+    DEFINE_REG32(secure_config);
+    DEFINE_REG32(secure_config_ext);
+    DEFINE_REG32(secure_security); /* FIXME shared */
+    DEFINE_REG32(secure_hash_result)[4];
+    DEFINE_REG32(secure_sec_sel)[SLOTS_MAX_NB];
+} tegra_bse;
+
 #endif // TEGRA_BSE_H

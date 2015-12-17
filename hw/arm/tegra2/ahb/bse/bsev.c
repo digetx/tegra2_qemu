@@ -22,40 +22,16 @@
 #include "crypto/aes.h"
 
 #include "bse.h"
+#include "devices.h"
 #include "clk_rst.h"
 #include "iomap.h"
 #include "tegra_trace.h"
 
-#define TYPE_TEGRA_BSE "tegra.bse"
-#define TEGRA_BSE(obj) OBJECT_CHECK(tegra_bse, (obj), TYPE_TEGRA_BSE)
-#define DEFINE_REG32(reg) reg##_t reg
+#define TYPE_TEGRA_BSEV "tegra.bsev"
+#define TEGRA_BSE(obj) OBJECT_CHECK(tegra_bse, (obj), TYPE_TEGRA_BSEV)
+#define TYPE_TEGRA_BSEA "tegra.bsea"
+#define TEGRA_BSEA(obj) OBJECT_CHECK(tegra_bse, (obj), TYPE_TEGRA_BSEA)
 #define WR_MASKED(r, d, m)  r = (r & ~m##_WRMASK) | (d & m##_WRMASK)
-
-#define CMD_BLKSTARTENGINE  0x0E
-#define CMD_DMASETUP        0x10
-#define CMD_DMACOMPLETE     0x11
-#define CMD_SETTABLE        0x15
-#define CMD_MEMDMAVD        0x22
-
-#define SUBCMD_VRAM_SEL             0x1
-#define SUBCMD_CRYPTO_TABLE_SEL     0x3
-#define SUBCMD_KEY_SCHED_TABLE_SEL  0x4
-#define SUBCMD_KEY_TABLE_SEL        0x8
-
-#define SLOTS_MAX_NB    8
-
-#define XOR_DISABLED    0
-#define XOR_TOP         2
-#define XOR_BOTTOM      3
-
-#define TABLE_IV_OFFSET 240
-#define TABLE_SIZE      256
-
-#define IS_BSEA(base)    (base == (TEGRA_BSEA_BASE + 0x1000))
-
-#define DPRINT(off, fmt, ...)                               \
-do { TPRINT( "%s" fmt , IS_BSEA(off) ? "BSEA: " : "BSEV: ", \
-    ## __VA_ARGS__); } while (0)
 
 enum {
     IDLE = 0,
@@ -73,33 +49,8 @@ static uint8_t fake[] = {
     0xC1, 0xAE, 0xB0, 0x7C
 };
 
-typedef struct tegra_bse_state {
-    SysBusDevice parent_obj;
-
-    qemu_irq irq;
-
-    uint32_t state;
-    uint8_t aes_key[SLOTS_MAX_NB][32];
-    uint8_t aes_iv[SLOTS_MAX_NB][AES_BLOCK_SIZE];
-    uint32_t src_addr;
-    bool has_key_sched_gen;
-    uint8_t hw_key_sched_length;
-
-    MemoryRegion iomem;
-    DEFINE_REG32(cmdque_control);
-    DEFINE_REG32(intr_status);
-    DEFINE_REG32(bse_config);
-    DEFINE_REG32(secure_dest_addr);
-    DEFINE_REG32(secure_input_select);
-    DEFINE_REG32(secure_config);
-    DEFINE_REG32(secure_config_ext);
-    DEFINE_REG32(secure_security); /* FIXME shared */
-    DEFINE_REG32(secure_hash_result)[4];
-    DEFINE_REG32(secure_sec_sel)[SLOTS_MAX_NB];
-} tegra_bse;
-
 static const VMStateDescription vmstate_tegra_bse = {
-    .name = "tegra.bse",
+    .name = "tegra.bsev",
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
@@ -116,7 +67,6 @@ static const VMStateDescription vmstate_tegra_bse = {
         VMSTATE_UINT32(secure_input_select.reg32, tegra_bse),
         VMSTATE_UINT32(secure_config.reg32, tegra_bse),
         VMSTATE_UINT32(secure_config_ext.reg32, tegra_bse),
-        VMSTATE_UINT32(secure_security.reg32, tegra_bse),
         VMSTATE_ARRAY(secure_hash_result, tegra_bse, 4, 0,
                       vmstate_info_uint32, secure_hash_result_t),
         VMSTATE_ARRAY(secure_sec_sel, tegra_bse, SLOTS_MAX_NB, 0,
@@ -130,7 +80,7 @@ static void tegra_debug_buffer(tegra_bse *s, uint8_t *buf, int sz)
     int i;
 
     for (i = 0; i < sz * AES_BLOCK_SIZE; i++)
-        DPRINT(s->iomem.addr, "0x%02X,%s", buf[i],
+        TPRINT("BSEV: 0x%02X,%s", buf[i],
                ((i + 1) % 16 == 0 || i == sz * AES_BLOCK_SIZE - 1) ? "\n" : " ");
 }
 
@@ -138,15 +88,14 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
                                     unsigned size)
 {
     tegra_bse *s = opaque;
-    int clk_id = IS_BSEA(s->iomem.addr) ? TEGRA20_CLK_BSEA : TEGRA20_CLK_BSEV;
-    int rst_set = tegra_rst_asserted(clk_id);
-    int clk_en = tegra_clk_enabled(clk_id);
+    tegra_bse *bsea = TEGRA_BSEA(tegra_bsea_dev);
+    int rst_set = tegra_rst_asserted(TEGRA20_CLK_BSEV);
+    int clk_en = tegra_clk_enabled(TEGRA20_CLK_BSEV);
     uint64_t ret = 0;
     int i;
 
-    if (clk_id == TEGRA20_CLK_BSEV) {
-        clk_en |= tegra_clk_enabled(TEGRA20_CLK_VDE);
-    }
+    clk_en  |= tegra_clk_enabled(TEGRA20_CLK_VDE);
+    rst_set |= tegra_rst_asserted(TEGRA20_CLK_VDE);
 
     assert(size == 4);
 
@@ -175,7 +124,7 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
         ret = s->secure_config_ext.reg32;
         break;
     case SECURE_SECURITY_OFFSET:
-        ret = s->secure_security.reg32;
+        ret = bsea->secure_security.reg32;
         break;
     case SECURE_HASH_RESULT0_OFFSET ... SECURE_HASH_RESULT3_OFFSET:
         i = (offset & 0xf) >> 2;
@@ -199,7 +148,7 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
     uint8_t opcode = value >> 26;
 
     if (s->state & DMA_SETUP) {
-        DPRINT(s->iomem.addr, "dma set to 0x%08X\n", (uint32_t) value);
+        TPRINT("BSEV: dma set to 0x%08X\n", (uint32_t) value);
         s->src_addr = (uint32_t) value;
         s->state &= ~DMA_SETUP;
         return;
@@ -217,11 +166,11 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
             int slot = set_table_cmd.cmd1 & 0x7;
 
             if (set_table_cmd.cmd2 == SUBCMD_VRAM_SEL) {
-                DPRINT(s->iomem.addr, "cmd: opcode=CMD_SETTABLE fetch to VRAM\n");
+                TPRINT("BSEV: cmd: opcode=CMD_SETTABLE fetch to VRAM\n");
             } else {
                 table_addr += set_table_cmd.key_table_phy_addr << 2;
 
-                DPRINT(s->iomem.addr, "cmd: opcode=CMD_SETTABLE fetch key "
+                TPRINT("BSEV: cmd: opcode=CMD_SETTABLE fetch key "
                                       "@0x%X [slot=%d]\n",
                         (uint32_t) table_addr, slot);
 
@@ -232,18 +181,18 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
             break;
         }
 
-        DPRINT(s->iomem.addr, "cmd: opcode=CMD_SETTABLE unknown sub_cmd "
+        TPRINT("BSEV: cmd: opcode=CMD_SETTABLE unknown sub_cmd "
                               "cmd1=%X undefined_bits=%X cmd2=%X cmd3=%X\n",
                 set_table_cmd.cmd1, set_table_cmd.undefined_bits,
                 set_table_cmd.cmd2, set_table_cmd.cmd3);
         break;
     }
     case CMD_DMASETUP:
-        DPRINT(s->iomem.addr, "cmd: opcode=CMD_DMASETUP\n");
+        TPRINT("BSEV: cmd: opcode=CMD_DMASETUP\n");
         s->state |= DMA_SETUP;
         break;
     case CMD_DMACOMPLETE:
-        DPRINT(s->iomem.addr, "cmd: opcode=CMD_DMACOMPLETE\n");
+        TPRINT("BSEV: cmd: opcode=CMD_DMACOMPLETE\n");
         s->state = IDLE;
         break;
     case CMD_BLKSTARTENGINE:
@@ -263,7 +212,7 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
         void *buffer_out;
         AES_KEY key;
 
-        DPRINT(s->iomem.addr, "cmd: opcode=CMD_BLKSTARTENGINE block_count=%d\n",
+        TPRINT("BSEV: cmd: opcode=CMD_BLKSTARTENGINE block_count=%d\n",
                 blk_cnt);
 
         buffer_in = dma_memory_map(&address_space_memory,
@@ -278,7 +227,7 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
         g_assert(buffer_out != NULL);
 
         if (s->state & FAKE) {
-            DPRINT(s->iomem.addr, "return fake\n");
+            TPRINT("BSEV: return fake\n");
             memcpy(buffer_out, fake, sizeof(fake));
             goto unmap;
         }
@@ -289,24 +238,24 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
             AES_set_decrypt_key(s->aes_key[slot], key_len, &key);
 
         if (xor_pos >> 1) {
-            DPRINT(s->iomem.addr, "%s using CBC algo 0x%08X -> 0x%08X key_len=%d\n",
+            TPRINT("BSEV: %s using CBC algo 0x%08X -> 0x%08X key_len=%d\n",
                    is_enc ? "encrypting" : "decrypting", s->src_addr,
                    s->secure_dest_addr.reg32, key_len);
 
-            DPRINT(s->iomem.addr, "--------- IV [SLOT=%d] --------\n", slot);
+            TPRINT("BSEV: --------- IV [SLOT=%d] --------\n", slot);
             tegra_debug_buffer(s, s->aes_iv[slot], 1);
 
-            DPRINT(s->iomem.addr, "--------- KEY [SLOT=%d] --------\n", slot);
+            TPRINT("BSEV: --------- KEY [SLOT=%d] --------\n", slot);
             tegra_debug_buffer(s, s->aes_key[slot], 1);
 
-            DPRINT(s->iomem.addr, "----------- IN %s ----------\n",
+            TPRINT("BSEV: ----------- IN %s ----------\n",
                    is_enc ? "CLEARTEXT" : "CIPHER");
             tegra_debug_buffer(s, buffer_in, blk_cnt);
 
             AES_cbc_encrypt(buffer_in, buffer_out, blk_cnt * AES_BLOCK_SIZE,
                             &key, s->aes_iv[slot], is_enc);
 
-            DPRINT(s->iomem.addr, "----------- OUT %s ----------\n",
+            TPRINT("BSEV: ----------- OUT %s ----------\n",
                    is_enc ? "CIPHER" : "CLEARTEXT");
             tegra_debug_buffer(s, buffer_out, blk_cnt);
 
@@ -317,14 +266,14 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
         if (!rng_en) {
             int i;
 
-            DPRINT(s->iomem.addr, "%s using ECB algo 0x%08X -> 0x%08X\n",
+            TPRINT("BSEV: %s using ECB algo 0x%08X -> 0x%08X\n",
                    is_enc ? "encrypting" : "decrypting",
                    s->src_addr, s->secure_dest_addr.reg32);
 
-            DPRINT(s->iomem.addr, "--------- KEY [SLOT=%d] --------\n", slot);
+            TPRINT("BSEV: --------- KEY [SLOT=%d] --------\n", slot);
             tegra_debug_buffer(s, s->aes_key[slot], 1);
 
-            DPRINT(s->iomem.addr, "----------- IN %s ----------\n",
+            TPRINT("BSEV: ----------- IN %s ----------\n",
                     is_enc ? "CLEARTEXT" : "CIPHER");
             tegra_debug_buffer(s, buffer_in, blk_cnt);
 
@@ -337,14 +286,14 @@ static void tegra_exec_icmd(tegra_bse *s, uint64_t value)
                     AES_decrypt(buffer_in + offset, buffer_out + offset, &key);
             }
 
-            DPRINT(s->iomem.addr, "----------- OUT %s ----------\n",
+            TPRINT("BSEV: ----------- OUT %s ----------\n",
                    is_enc ? "CIPHER" : "CLEARTEXT");
             tegra_debug_buffer(s, buffer_out, blk_cnt);
 
             goto unmap;
         }
 
-        DPRINT(s->iomem.addr, "unimplemented!!!!\n");
+        TPRINT("BSEV: unimplemented!!!!\n");
         g_assert_not_reached();
 
 unmap:
@@ -360,13 +309,13 @@ unmap:
         break;
     }
     case CMD_MEMDMAVD:
-        DPRINT(s->iomem.addr, "cmd: opcode=CMD_MEMDMAVD\n");
+        TPRINT("BSEV: cmd: opcode=CMD_MEMDMAVD\n");
         break;
     case 0x1F:
         s->state |= FAKE;
         break;
     default:
-        DPRINT(s->iomem.addr, "cmd: unknown opcode=0x%02X\n", opcode);
+        TPRINT("BSEV: cmd: unknown opcode=0x%02X\n", opcode);
     }
 }
 
@@ -374,17 +323,15 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_bse *s = opaque;
-    int clk_id = IS_BSEA(s->iomem.addr) ? TEGRA20_CLK_BSEA : TEGRA20_CLK_BSEV;
-    int rst_set = tegra_rst_asserted(clk_id);
-    int clk_en = tegra_clk_enabled(clk_id);
+    tegra_bse *bsea = TEGRA_BSEA(tegra_bsea_dev);
+    int rst_set = tegra_rst_asserted(TEGRA20_CLK_BSEV);
+    int clk_en = tegra_clk_enabled(TEGRA20_CLK_BSEV);
     int i;
 
     assert(size == 4);
 
-    if (clk_id == TEGRA20_CLK_BSEV) {
-        clk_en |= tegra_clk_enabled(TEGRA20_CLK_VDE);
-        rst_set |= tegra_rst_asserted(TEGRA20_CLK_VDE);
-    }
+    clk_en  |= tegra_clk_enabled(TEGRA20_CLK_VDE);
+    rst_set |= tegra_rst_asserted(TEGRA20_CLK_VDE);
 
     if (!clk_en || rst_set) {
         TRACE_WRITE_EXT(s->iomem.addr, offset, value, value, !clk_en, rst_set);
@@ -425,8 +372,8 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
         s->secure_config_ext.reg32 = value;
         break;
     case SECURE_SECURITY_OFFSET:
-        TRACE_WRITE(s->iomem.addr, offset, s->secure_security.reg32, value);
-        s->secure_security.reg32 = value;
+        TRACE_WRITE(s->iomem.addr, offset, bsea->secure_security.reg32, value);
+        bsea->secure_security.reg32 = value;
         break;
     case SECURE_HASH_RESULT0_OFFSET ... SECURE_HASH_RESULT3_OFFSET:
         i = (offset & 0xf) >> 2;
@@ -458,7 +405,6 @@ static void tegra_bse_priv_reset(DeviceState *dev)
     s->secure_input_select.reg32 = SECURE_INPUT_SELECT_RESET;
     s->secure_config.reg32 = SECURE_CONFIG_RESET;
     s->secure_config_ext.reg32 = SECURE_CONFIG_EXT_RESET;
-    s->secure_security.reg32 = SECURE_SECURITY_RESET;
 
     for (i = 0; i < 4; i++)
         s->secure_hash_result[i].reg32 = SECURE_HASH_RESULT_RESET;
@@ -483,7 +429,7 @@ static int tegra_bse_priv_init(SysBusDevice *dev)
     tegra_bse *s = TEGRA_BSE(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_bse_mem_ops, s,
-                          "tegra.bse", TEGRA_BSEA_SIZE);
+                          "tegra.bsev", TEGRA_BSEA_SIZE);
     sysbus_init_mmio(dev, &s->iomem);
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq);
@@ -511,7 +457,7 @@ static void tegra_bse_class_init(ObjectClass *klass, void *data)
 }
 
 static const TypeInfo tegra_bse_info = {
-    .name = TYPE_TEGRA_BSE,
+    .name = TYPE_TEGRA_BSEV,
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(tegra_bse),
     .class_init = tegra_bse_class_init,

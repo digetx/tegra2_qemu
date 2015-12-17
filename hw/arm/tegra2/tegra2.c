@@ -402,18 +402,14 @@ static void tegra2_init(MachineState *machine)
     tegra_ucq_dev = sysbus_create_simple("tegra.dummy256", 0x60010000, NULL);
 
     /* Bit Stream Engine Audio */
-    tegra_bsea_dev = qdev_create(NULL, "tegra.bse");
-    object_property_set_bool(tegra_bsea_dev, true, "key_sched_gen_supported", &error_abort);
-    object_property_set_int(tegra_bsea_dev, 80, "hw_key_sched_length", &error_abort);
-    qdev_init_nofail(tegra_bsea_dev);
-    sysbus_mmio_map(SYS_BUS_DEVICE(tegra_bsea_dev), 0, TEGRA_BSEA_BASE + 0x1000);
-    sysbus_connect_irq(SYS_BUS_DEVICE(tegra_bsea_dev), 0, DIRQ(INT_VDE_BSE_A));
+    tegra_bsea_dev = sysbus_create_simple("tegra.bsea", 0x60011000,
+                                          DIRQ(INT_VDE_BSE_A));
 
     /* Syntax Engine */
     tegra_sxe_dev = sysbus_create_simple("tegra.sxe", 0x6001A000, NULL);
 
     /* BSE Video */
-    tegra_bsev_dev = sysbus_create_simple("tegra.bse", TEGRA_VDE_BASE + 0x1000,
+    tegra_bsev_dev = sysbus_create_simple("tegra.bsev", 0x6001B000,
                                           DIRQ(INT_VDE_BSE_V));
 
     /* Macroblock Engine */
