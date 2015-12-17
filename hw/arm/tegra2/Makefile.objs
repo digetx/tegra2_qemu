@@ -18,6 +18,11 @@ obj-y += ppsb/timer/timer_us.o
 
 obj-y += ahb/apb_dma/apb_dma.o
 obj-y += ahb/bse/bse.o
+obj-y += ahb/bse/mbe.o
+obj-y += ahb/bse/mce.o
+obj-y += ahb/bse/sxe.o
+obj-y += ahb/bse/tfe.o
+obj-y += ahb/bse/vdma.o
 obj-y += ahb/bse/dummy256.o
 obj-y += ahb/bse/dummy768.o
 obj-y += ahb/bse/dummy2k.o

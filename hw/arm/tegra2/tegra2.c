@@ -410,29 +410,29 @@ static void tegra2_init(MachineState *machine)
     sysbus_connect_irq(SYS_BUS_DEVICE(tegra_bsea_dev), 0, DIRQ(INT_VDE_BSE_A));
 
     /* Syntax Engine */
-    tegra_sxe_dev = sysbus_create_simple("tegra.dummy_4k", 0x6001A000, NULL);
+    tegra_sxe_dev = sysbus_create_simple("tegra.sxe", 0x6001A000, NULL);
 
     /* BSE Video */
     tegra_bsev_dev = sysbus_create_simple("tegra.bse", TEGRA_VDE_BASE + 0x1000,
                                           DIRQ(INT_VDE_BSE_V));
 
     /* Macroblock Engine */
-    tegra_mbe_dev = sysbus_create_simple("tegra.dummy256", 0x6001C000, NULL);
+    tegra_mbe_dev = sysbus_create_simple("tegra.mbe", 0x6001C000, NULL);
 
     /* Post-processing Engine */
     tegra_ppe_dev = sysbus_create_simple("tegra.dummy256", 0x6001C200, NULL);
 
     /* Motion Compensation Engine */
-    tegra_mce_dev = sysbus_create_simple("tegra.dummy256", 0x6001C400, NULL);
+    tegra_mce_dev = sysbus_create_simple("tegra.mce", 0x6001C400, NULL);
 
     /* Transform Engine */
-    tegra_tfe_dev = sysbus_create_simple("tegra.dummy256", 0x6001C600, NULL);
+    tegra_tfe_dev = sysbus_create_simple("tegra.tfe", 0x6001C600, NULL);
 
     /* PPB ?? */
     tegra_ppb_dev = sysbus_create_simple("tegra.dummy256", 0x6001C800, NULL);
 
     /* Video DMA */
-    tegra_vdma_dev = sysbus_create_simple("tegra.dummy256", 0x6001CA00, NULL);
+    tegra_vdma_dev = sysbus_create_simple("tegra.vdma", 0x6001CA00, NULL);
 
     /* Unified Command Queue */
     tegra_ucq2_dev = sysbus_create_simple("tegra.dummy256", 0x6001CC00, NULL);
