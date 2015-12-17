@@ -402,7 +402,7 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
         break;
     case INTR_STATUS_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->intr_status.reg32, value & INTR_STATUS_WRMASK);
-        WR_MASKED(s->intr_status.reg32, ~value, INTR_STATUS);
+        WR_MASKED(s->intr_status.reg32, value, INTR_STATUS);
         break;
     case BSE_CONFIG_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->bse_config.reg32, value);
