@@ -102,6 +102,10 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
 
     assert(size == 4);
 
+    if (!clk_en) {
+        goto out;
+    }
+
     switch (offset) {
     case CMDQUE_CONTROL_OFFSET:
         ret = s->cmdque_control.reg32;
@@ -144,6 +148,11 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
 
     default:
         break;
+    }
+
+out:
+    if (!clk_en) {
+        ret = 1;
     }
 
     TRACE_READ_EXT(s->iomem.addr, offset, ret, !clk_en, rst_set);

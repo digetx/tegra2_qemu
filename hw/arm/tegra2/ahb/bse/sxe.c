@@ -44,6 +44,10 @@ static uint64_t tegra_sxe_read(void *opaque, hwaddr offset,
         break;
     }
 
+    if (!clk_en) {
+        ret = 1;
+    }
+
     TRACE_READ_EXT(s->iomem.addr, offset, ret, !clk_en, rst_set);
 
     return ret;
