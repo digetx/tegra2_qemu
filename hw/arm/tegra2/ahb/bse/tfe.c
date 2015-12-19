@@ -22,15 +22,7 @@
 #include "clk_rst.h"
 #include "tegra_trace.h"
 
-#define TYPE_TEGRA_VDE_TFE "tegra.tfe"
-#define TEGRA_VDE_TFE(obj) OBJECT_CHECK(tegra_tfe, (obj), TYPE_TEGRA_VDE_TFE)
-
-typedef struct tegra_tfe_state {
-    SysBusDevice parent_obj;
-
-    uint32_t regs[64];
-    MemoryRegion iomem;
-} tegra_tfe;
+#include "vde.h"
 
 static uint64_t tegra_tfe_read(void *opaque, hwaddr offset,
                                  unsigned size)
@@ -89,10 +81,33 @@ static void tegra_vde_tfe_priv_reset(DeviceState *dev)
     int i;
 
     for (i = 0; i < 64; i++) {
-        s->regs[i] = 0;
+        s->regs[i] = 0xED0FC0DE;
     }
 
     s->regs[0] = 0x00000107;
+    s->regs[1] = 0x00000000;
+    s->regs[2] = 0x00000000;
+    s->regs[3] = 0x00000000;
+    s->regs[4] = 0x00000000;
+    s->regs[5] = 0x00000080;
+    s->regs[6] = 0x00000000;
+    s->regs[7] = 0x00000000;
+    s->regs[8] = 0x00000000;
+    s->regs[9] = 0x00020018;
+    s->regs[10] = 0x00000000;
+    s->regs[11] = 0x00000000;
+    s->regs[32] = 0x00000107;
+    s->regs[33] = 0x00000000;
+    s->regs[34] = 0x00000000;
+    s->regs[35] = 0x00000000;
+    s->regs[36] = 0x00000000;
+    s->regs[37] = 0x00000080;
+    s->regs[38] = 0x00000000;
+    s->regs[39] = 0x00000000;
+    s->regs[40] = 0x00000000;
+    s->regs[41] = 0x00020018;
+    s->regs[42] = 0x00000000;
+    s->regs[43] = 0x00000000;
 }
 
 static void tegra_vde_tfe_class_init(ObjectClass *klass, void *data)

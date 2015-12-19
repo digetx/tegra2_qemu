@@ -250,7 +250,7 @@ typedef struct tegra_bse_state {
     DEFINE_REG32(secure_input_select);
     DEFINE_REG32(secure_config);
     DEFINE_REG32(secure_config_ext);
-    DEFINE_REG32(secure_security); /* FIXME shared */
+    DEFINE_REG32(secure_security);
     DEFINE_REG32(secure_hash_result)[4];
     DEFINE_REG32(secure_sec_sel)[SLOTS_MAX_NB];
 } tegra_bse;

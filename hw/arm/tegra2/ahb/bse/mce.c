@@ -22,15 +22,7 @@
 #include "clk_rst.h"
 #include "tegra_trace.h"
 
-#define TYPE_TEGRA_VDE_MCE "tegra.mce"
-#define TEGRA_VDE_MCE(obj) OBJECT_CHECK(tegra_mce, (obj), TYPE_TEGRA_VDE_MCE)
-
-typedef struct tegra_mce_state {
-    SysBusDevice parent_obj;
-
-    uint32_t regs[64];
-    MemoryRegion iomem;
-} tegra_mce;
+#include "vde.h"
 
 static uint64_t tegra_mce_read(void *opaque, hwaddr offset,
                                  unsigned size)
@@ -88,11 +80,25 @@ static void tegra_vde_mce_priv_reset(DeviceState *dev)
     tegra_mce *s = TEGRA_VDE_MCE(dev);
     int i;
 
-    for (i = 0; i < 64; i++) {
-        s->regs[i] = 0;
+    for (i = 16; i < 64; i++) {
+        s->regs[i] = 0xED0FC0DE;
     }
 
+    s->regs[0] = 0x3004E52C;
+    s->regs[1] = 0x40000000;
     s->regs[2] = 0x00000001;
+    s->regs[3] = 0x00000000;
+    s->regs[5] = 0x00000000;
+    s->regs[6] = 0x00000000;
+    s->regs[7] = 0x00000000;
+    s->regs[8] = 0x00000000;
+    s->regs[9] = 0x00000000;
+    s->regs[10] = 0x00000000;
+    s->regs[11] = 0x03F00000;
+    s->regs[12] = 0x00000155;
+    s->regs[13] = 0x00000000;
+    s->regs[14] = 0x00000000;
+    s->regs[15] = 0x00000000;
 }
 
 static void tegra_vde_mce_class_init(ObjectClass *klass, void *data)

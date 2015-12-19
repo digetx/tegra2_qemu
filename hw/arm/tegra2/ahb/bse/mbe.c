@@ -22,15 +22,7 @@
 #include "clk_rst.h"
 #include "tegra_trace.h"
 
-#define TYPE_TEGRA_VDE_MBE "tegra.mbe"
-#define TEGRA_VDE_MBE(obj) OBJECT_CHECK(tegra_mbe, (obj), TYPE_TEGRA_VDE_MBE)
-
-typedef struct tegra_mbe_state {
-    SysBusDevice parent_obj;
-
-    uint32_t regs[64];
-    MemoryRegion iomem;
-} tegra_mbe;
+#include "vde.h"
 
 static uint64_t tegra_mbe_read(void *opaque, hwaddr offset,
                                  unsigned size)
@@ -92,7 +84,21 @@ static void tegra_vde_mbe_priv_reset(DeviceState *dev)
         s->regs[i] = 0;
     }
 
+    s->regs[0] = 0x0000113E;
+    s->regs[2] = 0x00000008;
+    s->regs[3] = 0x00000009;
+    s->regs[4] = 0x34434B11;
+    s->regs[6] = 0x00000380;
+    s->regs[7] = 0x00003C10;
+    s->regs[8] = 0x0164513E;
+    s->regs[9] = 0xC50008FA;
+    s->regs[10] = 0x20805149;
+    s->regs[11] = 0x932449D1;
+    s->regs[18] = 0x0002D210;
+    s->regs[19] = 0x8A08CA07;
     s->regs[20] = 0x10FF0002;
+    s->regs[21] = 0x0000000F;
+    s->regs[33] = 0x00000001;
     s->regs[34] = 0x10000000;
     s->regs[35] = 0x00000010;
 }

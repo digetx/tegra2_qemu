@@ -21,11 +21,13 @@
 #include "sysemu/dma.h"
 #include "crypto/aes.h"
 
-#include "bse.h"
 #include "devices.h"
 #include "clk_rst.h"
 #include "iomap.h"
 #include "tegra_trace.h"
+
+#include "bse.h"
+#include "vde.h"
 
 #define TYPE_TEGRA_BSEV "tegra.bsev"
 #define TEGRA_BSE(obj) OBJECT_CHECK(tegra_bse, (obj), TYPE_TEGRA_BSEV)
@@ -89,6 +91,7 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
 {
     tegra_bse *s = opaque;
     tegra_bse *bsea = TEGRA_BSEA(tegra_bsea_dev);
+    tegra_sxe *sxe = TEGRA_VDE_SXE(tegra_sxe_dev);
     int rst_set = tegra_rst_asserted(TEGRA20_CLK_BSEV);
     int clk_en = tegra_clk_enabled(TEGRA20_CLK_BSEV);
     uint64_t ret = 0;
@@ -134,6 +137,11 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
         i = (offset & 0x1f) >> 2;
         ret = s->secure_sec_sel[i].reg32;
         break;
+
+    case 0x10:
+        ret = (sxe->regs[26] & 0xFFFFF) + sxe->regs[27];
+        break;
+
     default:
         break;
     }

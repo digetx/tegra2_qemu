@@ -22,23 +22,27 @@
 #include "clk_rst.h"
 #include "tegra_trace.h"
 
-#define TYPE_TEGRA_VDE_SXE "tegra.sxe"
-#define TEGRA_VDE_SXE(obj) OBJECT_CHECK(tegra_sxe, (obj), TYPE_TEGRA_VDE_SXE)
-
-typedef struct tegra_sxe_state {
-    SysBusDevice parent_obj;
-
-    uint32_t regs[1024];
-    MemoryRegion iomem;
-} tegra_sxe;
+#include "vde.h"
 
 static uint64_t tegra_sxe_read(void *opaque, hwaddr offset,
                                  unsigned size)
 {
     tegra_sxe *s = opaque;
-    uint32_t ret = s->regs[offset >> 2];
     int rst_set = tegra_rst_asserted(TEGRA20_CLK_VDE);
     int clk_en = tegra_clk_enabled(TEGRA20_CLK_VDE);
+    int reg_n = offset >> 2;
+    uint32_t ret = 0;
+
+    switch (offset) {
+    case 0xC8:
+        if (s->regs[4] & 5) {
+            ret = s->regs[reg_n];
+        }
+        break;
+    default:
+        ret = s->regs[reg_n];
+        break;
+    }
 
     TRACE_READ_EXT(s->iomem.addr, offset, ret, !clk_en, rst_set);
 
@@ -64,7 +68,7 @@ static void tegra_sxe_write(void *opaque, hwaddr offset,
         return;
     }
 
-    switch(reg_n){
+    switch (offset){
     case 0:
         if (value & 0x20000000) {
             s->regs[50] = value << 16;
@@ -100,6 +104,10 @@ static void tegra_vde_sxe_priv_reset(DeviceState *dev)
     for (i = 0; i < 1024; i++) {
         s->regs[i] = 0;
     }
+
+    s->regs[10] = 0x00004000;
+    s->regs[14] = 0x000001FF;
+    s->regs[51] = 0xFC000000;
 }
 
 static void tegra_vde_sxe_class_init(ObjectClass *klass, void *data)
