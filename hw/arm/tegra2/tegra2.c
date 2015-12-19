@@ -437,7 +437,7 @@ static void tegra2_init(MachineState *machine)
     tegra_bsea2_dev = sysbus_create_simple("tegra.dummy_2k", 0x6001D000, NULL);
 
     /* FRAMEID */
-    tegra_frameid_dev = sysbus_create_simple("tegra.dummy768", 0x6001D800, NULL);
+    tegra_frameid_dev = sysbus_create_simple("tegra.frameid", 0x6001D800, NULL);
 
     /* I2C controllers */
     tegra_idc1_dev = sysbus_create_simple("tegra-i2c",
