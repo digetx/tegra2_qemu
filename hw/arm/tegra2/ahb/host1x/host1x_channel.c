@@ -62,9 +62,7 @@ static const VMStateDescription vmstate_tegra_host1x_channel = {
 
 static uint32_t host1x_sync_read_reg(uint32_t addr)
 {
-#ifdef TEGRA_TRACE
     uint32_t base = addr & 0xFFFFF000;
-#endif
     uint32_t offset = addr & 0xFFF;
     uint32_t ret = 0;
 
@@ -250,9 +248,7 @@ static uint32_t host1x_sync_read_reg(uint32_t addr)
 
 static void host1x_sync_write_reg(uint32_t addr, uint32_t value)
 {
-#ifdef TEGRA_TRACE
     uint32_t base = addr & 0xFFFFF000;
-#endif
     uint32_t offset = addr & 0xFFF;
     unsigned i;
 

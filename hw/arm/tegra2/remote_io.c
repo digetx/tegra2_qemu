@@ -17,6 +17,8 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#define TEGRA_TRACE
+
 #include <sys/select.h>
 
 #include "qemu/sockets.h"

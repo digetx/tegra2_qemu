@@ -113,9 +113,7 @@ static void tegra_dc_priv_write(void *opaque, hwaddr offset,
 {
     tegra_dc *s = opaque;
     enum shadow_type st = (s->dc.cmd_state_access.write_mux) ? ASSEMBLY : ACTIVE;
-#ifdef TEGRA_TRACE
     uint32_t old = tegra_dc_priv_read(s, offset, size);
-#endif
 
     offset >>= 2;
 
