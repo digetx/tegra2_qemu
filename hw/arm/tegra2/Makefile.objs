@@ -46,5 +46,6 @@ obj-y += cpu/reset.o
 
 obj-y += devices.o
 obj-y += irq_dispatcher.o
+obj-y += remote_io.o
 obj-y += tegra2.o
 obj-y += trace.o

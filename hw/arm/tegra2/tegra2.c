@@ -33,6 +33,7 @@
 #include "devices.h"
 #include "iomap.h"
 #include "irqs.h"
+#include "remote_io.h"
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
 
@@ -570,6 +571,7 @@ static void tegra2_init(MachineState *machine)
 
 static void tegra2_reset(void)
 {
+    remote_io_init("10.1.1.5:45312");
     tegra_trace_init();
     qemu_devices_reset();
 
