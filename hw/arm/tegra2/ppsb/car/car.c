@@ -24,6 +24,7 @@
 #include "clk_rst.h"
 #include "devices.h"
 #include "iomap.h"
+#include "remote_io.h"
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
 
@@ -314,12 +315,64 @@ static void clr_rst_devices_l(uint32_t value)
     }
 }
 
-static void set_rst_devices_h(uint32_t value)
+static void set_rst_devices_h(uint32_t value, uint32_t clk_enb)
 {
+    rst_dev_h_set_t rst = { .reg32 = value };
+    clk_out_enb_h_t clk = { .reg32 = clk_enb };
+
+    if (rst.set_bsea_rst & clk.clk_enb_bsea) {
+        TPRINT("car: resetting BSEA\n");
+        tegra_device_reset( DEVICE(tegra_bsea_dev) );
+    }
+
+    if (rst.set_bsea_rst) {
+        remote_io_rst_set(TEGRA20_CLK_BSEA, 1);
+    }
+
+    if (rst.set_bsev_rst & clk.clk_enb_bsev) {
+        TPRINT("car: resetting BSEV\n");
+        tegra_device_reset( DEVICE(tegra_bsev_dev) );
+    }
+
+    if (rst.set_bsev_rst) {
+        remote_io_rst_set(TEGRA20_CLK_BSEV, 1);
+    }
+
+    if (rst.set_vde_rst & clk.clk_enb_vde) {
+        TPRINT("car: resetting VDE\n");
+        tegra_device_reset( DEVICE(tegra_sxe_dev) );
+        tegra_device_reset( DEVICE(tegra_bsev_dev) );
+        tegra_device_reset( DEVICE(tegra_mbe_dev) );
+        tegra_device_reset( DEVICE(tegra_ppe_dev) );
+        tegra_device_reset( DEVICE(tegra_mce_dev) );
+        tegra_device_reset( DEVICE(tegra_tfe_dev) );
+        tegra_device_reset( DEVICE(tegra_ppb_dev) );
+        tegra_device_reset( DEVICE(tegra_vdma_dev) );
+        tegra_device_reset( DEVICE(tegra_ucq2_dev) );
+        tegra_device_reset( DEVICE(tegra_bsea2_dev) );
+        tegra_device_reset( DEVICE(tegra_frameid_dev) );
+    }
+
+    if (rst.set_vde_rst) {
+        remote_io_rst_set(TEGRA20_CLK_VDE, 1);
+    }
 }
 
-static void clr_rst_devices_h(uint32_t value)
+static void clr_rst_devices_h(uint32_t value, uint32_t clk_enb)
 {
+    rst_dev_h_clr_t rst = { .reg32 = value };
+
+    if (rst.clr_bsea_rst) {
+        remote_io_rst_set(TEGRA20_CLK_BSEA, 0);
+    }
+
+    if (rst.clr_bsev_rst) {
+        remote_io_rst_set(TEGRA20_CLK_BSEV, 0);
+    }
+
+    if (rst.clr_vde_rst) {
+        remote_io_rst_set(TEGRA20_CLK_VDE, 0);
+    }
 }
 
 static void set_rst_devices_u(uint32_t value)
@@ -662,8 +715,8 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
     case RST_DEVICES_H_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_h.reg32, value);
 
-        set_rst_devices_h(((s->rst_devices_h.reg32 & value) ^ value) & s->clk_out_enb_h.reg32);
-        clr_rst_devices_h(s->rst_devices_h.reg32 & ~value & s->clk_out_enb_h.reg32);
+        set_rst_devices_h(((s->rst_devices_h.reg32 & value) ^ value), s->clk_out_enb_h.reg32);
+        clr_rst_devices_h(s->rst_devices_h.reg32 & ~value, s->clk_out_enb_h.reg32);
         s->rst_devices_h.reg32 = value;
         break;
     case RST_DEVICES_U_OFFSET:
@@ -683,7 +736,11 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_h.reg32, value);
         s->clk_out_enb_h.reg32 = value;
 
-        set_rst_devices_h(((s->clk_out_enb_h.reg32 & value) ^ value) & s->rst_devices_h.reg32);
+        remote_io_clk_set(TEGRA20_CLK_BSEA, s->clk_out_enb_h.clk_enb_bsea);
+        remote_io_clk_set(TEGRA20_CLK_BSEV, s->clk_out_enb_h.clk_enb_bsev);
+        remote_io_clk_set(TEGRA20_CLK_VDE, s->clk_out_enb_h.clk_enb_vde);
+
+        set_rst_devices_h(((s->clk_out_enb_h.reg32 & value) ^ value), s->rst_devices_h.reg32);
         break;
     case CLK_OUT_ENB_U_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_u.reg32, value);
@@ -1034,13 +1091,13 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
     case RST_DEV_H_SET_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_h.reg32, value);
 
-        set_rst_devices_h(((s->rst_devices_h.reg32 & value) ^ value) & s->clk_out_enb_h.reg32);
+        set_rst_devices_h(((s->rst_devices_h.reg32 & value) ^ value), s->clk_out_enb_h.reg32);
         s->rst_devices_h.reg32 |= value;
         break;
     case RST_DEV_H_CLR_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->rst_devices_h.reg32, value);
 
-        clr_rst_devices_h(s->rst_devices_h.reg32 & value & s->clk_out_enb_h.reg32);
+        clr_rst_devices_h(s->rst_devices_h.reg32 & value, s->clk_out_enb_h.reg32);
         s->rst_devices_h.reg32 &= ~value;
         break;
     case RST_DEV_U_SET_OFFSET:
@@ -1068,12 +1125,20 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
     case CLK_ENB_H_SET_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_h.reg32, value);
 
-        set_rst_devices_h(((s->clk_out_enb_h.reg32 & value) ^ value) & s->rst_devices_h.reg32);
+        set_rst_devices_h(((s->clk_out_enb_h.reg32 & value) ^ value), s->rst_devices_h.reg32);
         s->clk_out_enb_h.reg32 |= value;
+
+        remote_io_clk_set(TEGRA20_CLK_BSEA, s->clk_out_enb_h.clk_enb_bsea);
+        remote_io_clk_set(TEGRA20_CLK_BSEV, s->clk_out_enb_h.clk_enb_bsev);
+        remote_io_clk_set(TEGRA20_CLK_VDE, s->clk_out_enb_h.clk_enb_vde);
         break;
     case CLK_ENB_H_CLR_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_h.reg32, value);
         s->clk_out_enb_h.reg32 &= ~value;
+
+        remote_io_clk_set(TEGRA20_CLK_BSEA, s->clk_out_enb_h.clk_enb_bsea);
+        remote_io_clk_set(TEGRA20_CLK_BSEV, s->clk_out_enb_h.clk_enb_bsev);
+        remote_io_clk_set(TEGRA20_CLK_VDE, s->clk_out_enb_h.clk_enb_vde);
         break;
     case CLK_ENB_U_SET_OFFSET:
         TRACE_WRITE(s->iomem.addr, offset, s->clk_out_enb_u.reg32, value);
@@ -1236,6 +1301,7 @@ static void tegra_car_priv_reset(DeviceState *dev)
     /* Enable BSEV */
     s->rst_devices_h.swr_bsev_rst = 0;
     s->clk_out_enb_h.clk_enb_bsev = 1;
+    s->rst_devices_h.swr_vde_rst = 0;
 
     s->osc_freq_det_status.osc_freq_det_cnt = 1587;
 }

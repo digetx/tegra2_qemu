@@ -93,6 +93,10 @@ void tegra_device_reset(void *dev_)
     SysBusDevice *sbd = SYS_BUS_DEVICE(dev);
     int i = 0;
 
+    if (dev_ == NULL) {
+        return;
+    }
+
     device_reset(dev);
 
     while (sysbus_has_irq(sbd, i)) {

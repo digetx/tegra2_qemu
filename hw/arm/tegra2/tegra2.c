@@ -440,6 +440,13 @@ static void tegra2_init(MachineState *machine)
     /* FRAMEID */
     tegra_frameid_dev = sysbus_create_simple("tegra.frameid", 0x6001D800, NULL);
 
+//     sysbus_create_varargs("tegra.bse_remote", 0x60010000,
+//                           DIRQ(INT_VDE_UCQ_ERROR),
+//                           DIRQ(INT_VDE_SYNC_TOKEN),
+//                           DIRQ(INT_VDE_BSE_V),
+//                           DIRQ(INT_VDE_BSE_A),
+//                           DIRQ(INT_VDE_SXE), NULL);
+
     /* I2C controllers */
     tegra_idc1_dev = sysbus_create_simple("tegra-i2c",
                                           TEGRA_I2C_BASE, DIRQ(INT_I2C));
@@ -571,7 +578,7 @@ static void tegra2_init(MachineState *machine)
 
 static void tegra2_reset(void)
 {
-    remote_io_init("10.1.1.5:45312");
+//     remote_io_init("10.1.1.3:45312");
     tegra_trace_init();
     qemu_devices_reset();
 
