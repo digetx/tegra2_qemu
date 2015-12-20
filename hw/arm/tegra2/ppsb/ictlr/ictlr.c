@@ -84,37 +84,69 @@ int tegra_ictlr_is_irq_pending_on_cpu(int cpu_id)
     return ret;
 }
 
-static void tegra_ictlr_update_irq(tegra_ictlr *s, uint32_t *res, uint32_t *ier,
-                                   uint32_t *iep, int is_fiq, qemu_irq irq)
+static void tegra_ictlr_update_irq(tegra_ictlr *s, uint32_t *virq, uint32_t *ier,
+                                   uint32_t *iep, int is_fiq, qemu_irq irq,
+                                   int bank)
 {
-    uint32_t prev = 0, new = 0;
+    uint32_t new_sts, old_sts;
+    int old_irq_lvl = !!(virq[0] | virq[1] | virq[2] | virq[3]);
+    int new_irq_lvl = 0;
     int i;
 
-    for (i = 0; i < 4; i++) {
-        prev |= res[i];
-        res[i] = (s->fir[i] | s->isr[i]) & ier[i] & (is_fiq ? iep[i] : ~iep[i]);
-        new |= res[i];
+    old_sts = virq[bank];
+
+    new_sts = (s->fir[bank] | s->isr[bank]) & ier[bank];
+    new_sts = (is_fiq ? iep[bank] : ~iep[bank]) & new_sts;
+
+    if (old_sts == new_sts) {
+        /* VIRQ's state not changed at all.  */
+        return;
     }
 
-    if (!!prev == !!new)
-        return;
+    /* Some bit changed, update valid IRQ's status register.  */
+    virq[bank] = new_sts;
 
-    qemu_set_irq(irq, !!new);
+    if (!!old_sts == !!new_sts) {
+        /* Bank IRQ level state not changed.  */
+        return;
+    }
+
+    if (old_irq_lvl == !!new_sts) {
+        /* No change if new bank level is equal to overall old one.  */
+        return;
+    }
+
+    /* TODO: Just track CPU IRQ status.  */
+    for (i = 0; i < 4; i++) {
+        new_irq_lvl = (i == bank) ? !!new_sts : !!virq[i];
+
+        /* Any bank with VIRQ != 0 would interrupt CPU.  */
+        if (new_irq_lvl) {
+            break;
+        }
+    }
+
+    /* Stop here if overall IRQ state not changed.  */
+    if (old_irq_lvl == new_irq_lvl) {
+        return;
+    }
+
+    qemu_set_irq(irq, new_irq_lvl);
 }
 
-static void tegra_ictlr_update_irqs(tegra_ictlr *s)
+static void tegra_ictlr_update_irqs(tegra_ictlr *s, int bank)
 {
     tegra_ictlr_update_irq(s, s->virq_cpu, s->cpu_ier, s->cpu_iep_class,
-                           0, s->cpu_irq);
+                           0, s->cpu_irq, bank);
 
     tegra_ictlr_update_irq(s, s->vfiq_cpu, s->cpu_ier, s->cpu_iep_class,
-                           1, s->cpu_fiq);
+                           1, s->cpu_fiq, bank);
 
     tegra_ictlr_update_irq(s, s->virq_cop, s->cop_ier, s->cop_iep_class,
-                           0, s->cop_irq);
+                           0, s->cop_irq, bank);
 
     tegra_ictlr_update_irq(s, s->vfiq_cop, s->cop_ier, s->cop_iep_class,
-                           1, s->cop_fiq);
+                           1, s->cop_fiq, bank);
 }
 
 static void tegra_ictlr_irq_handler(void *opaque, int irq, int level)
@@ -132,7 +164,7 @@ static void tegra_ictlr_irq_handler(void *opaque, int irq, int level)
     else
         s->isr[bank] &= ~irq_mask;
 
-    tegra_ictlr_update_irqs(s);
+    tegra_ictlr_update_irqs(s, bank);
 }
 
 static uint64_t tegra_ictlr_read(void *opaque, hwaddr offset, unsigned size)
@@ -246,7 +278,7 @@ static void tegra_ictlr_write(void *opaque, hwaddr offset,
         return;
     }
 
-    tegra_ictlr_update_irqs(s);
+    tegra_ictlr_update_irqs(s, bank);
 }
 
 static void tegra_ictlr_reset(DeviceState *dev)
