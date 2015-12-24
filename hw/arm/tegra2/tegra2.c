@@ -563,6 +563,12 @@ static void tegra2_init(MachineState *machine)
                                 0xF0000000,
                                 0xF0000000, SZ_64K);
 
+    /* Map 0x2F600000-0x1F600000 to remote device.  */
+//     sysbus_create_simple("tegra.remote_mem", 0x2F600000, NULL);
+//     cop_memory_region_add_alias(cop_sysmem, "tegra.cop-remote_mem", sysmem,
+//                                 0x2F600000,
+//                                 0x2F600000, 0x10000000);
+
     cs = qemu_get_cpu(TEGRA2_COP);
     cs->as = cop_as;
 
