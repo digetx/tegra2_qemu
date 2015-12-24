@@ -43,7 +43,7 @@ static uint64_t bse_remote_read(void *opaque, hwaddr offset,
                                  unsigned size)
 {
     bse_remote *s = opaque;
-    uint32_t ret = remote_io_read(s->iomem.addr + offset);
+    uint32_t ret = remote_io_read(s->iomem.addr + offset, size << 3);
     int rst_set = tegra_rst_asserted(TEGRA20_CLK_VDE);
     int clk_en = tegra_clk_enabled(TEGRA20_CLK_VDE);
     uint32_t base;
@@ -178,7 +178,7 @@ static void bse_remote_write(void *opaque, hwaddr offset,
     TRACE_WRITE_EXT(base, offset & mask, s->regs[offset >> 2], value,
                     !clk_en, rst_set);
 
-    remote_io_write(value, s->iomem.addr + offset);
+    remote_io_write(value, s->iomem.addr + offset, size << 3);
 }
 
 static const MemoryRegionOps bse_remote_mem_ops = {

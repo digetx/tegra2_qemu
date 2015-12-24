@@ -19,14 +19,13 @@
 
 #define TEGRA_TRACE
 
-#include <sys/select.h>
-
 #include "qemu/sockets.h"
 #include "qemu/thread.h"
 #include "qemu-common.h"
 
 #include "irqs.h"
 #include "remote_io.h"
+#include "tegra_cpu.h"
 #include "tegra_trace.h"
 
 #define RST_DEV_L_SET           0x60006300
@@ -46,8 +45,9 @@
 struct __pak remote_io_read_req {
     uint8_t magic;
     uint32_t address;
+    unsigned size:7;
+    unsigned on_avp:1;
     uint32_t __pad32;
-    uint8_t __pad8;
 };
 
 #define REMOTE_IO_READ_RESP 0x1
@@ -65,7 +65,8 @@ struct __pak remote_io_write_req {
     uint8_t magic;
     uint32_t address;
     uint32_t value;
-    uint8_t __pad8;
+    unsigned size:7;
+    unsigned on_avp:1;
 };
 
 #define REMOTE_IO_IRQ_WATCH 0x3
@@ -97,6 +98,7 @@ static const char *remote_addr;
 static int sock = -1;
 
 static QemuThread recv_thread;
+static QemuMutex io_mutex;
 static QemuEvent read_ev;
 static uint32_t read_val;
 
@@ -112,16 +114,6 @@ static void remote_irq_handle(struct  remote_io_irq_notify *inotify)
     }
 }
 
-static void wait_for_event(void)
-{
-    fd_set rfds;
-
-    FD_ZERO(&rfds);
-    FD_SET(sock, &rfds);
-
-    select(sock + 1, &rfds, NULL, NULL, NULL);
-}
-
 static void * remote_io_recv_handler(void *arg)
 {
     struct  remote_io_irq_notify *inotify;
@@ -130,9 +122,7 @@ static void * remote_io_recv_handler(void *arg)
     int magic;
 
     for (;;) {
-        wait_for_event();
-
-        if (recv_all(sock, buf, sizeof(buf), false) != sizeof(buf)) {
+        if (recv_all(sock, buf, sizeof(buf), 0) != sizeof(buf)) {
             hw_error("%s failed\n", __func__);
         }
 
@@ -158,17 +148,21 @@ static void * remote_io_recv_handler(void *arg)
     return NULL;
 }
 
-uint32_t remote_io_read(uint32_t addr)
+uint32_t remote_io_read(uint32_t addr, int size)
 {
     struct  remote_io_read_req req = {
         .magic = REMOTE_IO_READ,
         .address = addr,
+        .size = size,
+        .on_avp = (current_cpu->cpu_index == TEGRA2_COP),
     };
+    uint32_t ret;
 
     if (sock == -1) {
         return 0;
     }
 
+    qemu_mutex_lock(&io_mutex);
     qemu_event_reset(&read_ev);
 
     if (send_all(sock, &req, sizeof(req)) < 0) {
@@ -176,16 +170,20 @@ uint32_t remote_io_read(uint32_t addr)
     }
 
     qemu_event_wait(&read_ev);
+    ret = read_val;
+    qemu_mutex_unlock(&io_mutex);
 
-    return read_val;
+    return ret;
 }
 
-void remote_io_write(uint32_t value, uint32_t addr)
+void remote_io_write(uint32_t value, uint32_t addr, int size)
 {
     struct  remote_io_write_req req = {
         .magic = REMOTE_IO_WRITE,
         .value = value,
         .address = addr,
+        .size = size,
+        .on_avp = (current_cpu->cpu_index == TEGRA2_COP),
     };
 
     if (sock == -1) {
@@ -222,7 +220,7 @@ void remote_io_rst_set(uint8_t id, int enb)
     uint32_t addr = RST_DEV_L_SET + (bank << 3) + (!enb << 2);
     uint32_t val = 1 << (id & 0x1F);
 
-    remote_io_write(val, addr);
+    remote_io_write(val, addr, 32);
 }
 
 void remote_io_clk_set(uint8_t id, int enb)
@@ -231,7 +229,7 @@ void remote_io_clk_set(uint8_t id, int enb)
     uint32_t addr = CLK_ENB_L_SET + (bank << 3) + (!enb << 2);
     uint32_t val = 1 << (id & 0x1F);
 
-    remote_io_write(val, addr);
+    remote_io_write(val, addr, 32);
 }
 
 static void remote_io_connect(void)
@@ -256,6 +254,7 @@ void remote_io_init(const char *addr)
         return;
     }
 
+    qemu_mutex_init(&io_mutex);
     qemu_event_init(&read_ev, 0);
 
     remote_addr = addr;
