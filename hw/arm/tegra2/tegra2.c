@@ -256,6 +256,12 @@ static void tegra2_init(MachineState *machine)
     memory_region_add_and_init_ram(sysmem, "tegra.iram",
                                    TEGRA_IRAM_BASE, TEGRA_IRAM_SIZE, RW);
 
+    /* Map 0x400-0x40000 of IRAM to remote device.  */
+//     memory_region_add_and_init_ram(sysmem, "tegra.iram",
+//                                    TEGRA_IRAM_BASE, TEGRA_RESET_HANDLER_SIZE, RW);
+//     sysbus_create_simple("tegra.remote_iram",
+//                          TEGRA_IRAM_BASE + TEGRA_RESET_HANDLER_SIZE, NULL);
+
     memory_region_add_and_init_ram(sysmem, "tegra.irom",
                                    BOOTROM_BASE, 0xC000, RO);
 
