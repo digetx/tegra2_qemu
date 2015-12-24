@@ -73,11 +73,11 @@ static void tegra_irq_dispatcher_set_irq_gic(void *opaque, int irq, int level)
 
 static void tegra_irq_dispatcher_set_cpu_irq_lic(void *opaque, int irq, int level)
 {
-    tegra_irq_dispatcher *s = TEGRA_IRQ_DISPATCHER(opaque);
-    int irq_type = irq & 1;
+//     tegra_irq_dispatcher *s = TEGRA_IRQ_DISPATCHER(opaque);
+//     int irq_type = irq & 1;
 
-    s->cpu_irq_lic_lvl = level;
-    level |= s->cpu_irq_gic_lvl;
+//     s->cpu_irq_lic_lvl = level;
+//     level |= s->cpu_irq_gic_lvl;
 
 //     TPRINT("%s irq=%d type=%s lvl=%d\n",
 //            __func__, irq, irq_type ? "FIQ":"IRQ", level);
@@ -86,7 +86,8 @@ static void tegra_irq_dispatcher_set_cpu_irq_lic(void *opaque, int irq, int leve
         tegra_flow_on_irq(TEGRA2_A9_CORE0);
     }
 
-    qemu_set_irq(s->cpu_irqs[TEGRA2_A9_CORE0][irq_type], level);
+    /* LIC is only used to wake CPU.  */
+//     qemu_set_irq(s->cpu_irqs[TEGRA2_A9_CORE0][irq_type], level);
 }
 
 static void tegra_irq_dispatcher_set_cop_irq_lic(void *opaque, int irq, int level)
