@@ -59,4 +59,16 @@ typedef union cntr_freeze_u {
     uint32_t reg32;
 } cntr_freeze_t;
 
+#define DEFINE_REG32(reg) reg##_t reg
+
+typedef struct tegra_timer_us_state {
+    SysBusDevice parent_obj;
+
+    MemoryRegion iomem;
+    ptimer_state *ptimer;
+    DEFINE_REG32(cntr_1us);
+    DEFINE_REG32(usec_cfg);
+    DEFINE_REG32(cntr_freeze);
+} tegra_timer_us;
+
 #endif // TEGRA_TIMER_US_H

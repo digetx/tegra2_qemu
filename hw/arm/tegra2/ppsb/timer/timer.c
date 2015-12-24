@@ -27,20 +27,9 @@
 
 #define TYPE_TEGRA_TIMER "tegra.timer"
 #define TEGRA_TIMER(obj) OBJECT_CHECK(tegra_timer, (obj), TYPE_TEGRA_TIMER)
-#define DEFINE_REG32(reg) reg##_t reg
 #define WR_MASKED(r, d, m)  r = (r & ~m##_WRMASK) | (d & m##_WRMASK)
 
-#define SCALE	1
-
-typedef struct tegra_timer_state {
-    SysBusDevice parent_obj;
-
-    MemoryRegion iomem;
-    ptimer_state *ptimer;
-    DEFINE_REG32(ptv);
-    DEFINE_REG32(pcr);
-    qemu_irq irq;
-} tegra_timer;
+#define SCALE   1
 
 static const VMStateDescription vmstate_tegra_timer = {
     .name = "tegra.timer",
@@ -61,7 +50,11 @@ static void tegra_timer_alarm(void *opaque)
     s->ptv.en = s->ptv.per;
 
 //     TPRINT("[%lu] tegra_timer_alarm!\n", qemu_clock_get_us(QEMU_CLOCK_VIRTUAL));
-    TRACE_IRQ_RAISE(s->iomem.addr, s->irq);
+    if (!s->irq_sts) {
+	TRACE_IRQ_RAISE(s->iomem.addr, s->irq);
+    }
+
+    s->irq_sts = 1;
 }
 
 static uint64_t tegra_timer_priv_read(void *opaque, hwaddr offset,
@@ -119,8 +112,9 @@ static void tegra_timer_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(s->iomem.addr, offset, s->pcr.reg32, value & PCR_WRMASK);
         WR_MASKED(s->pcr.reg32, value, PCR);
 
-        if (s->pcr.intr_clr) {
+        if (s->pcr.intr_clr && s->irq_sts) {
             TRACE_IRQ_LOWER(s->iomem.addr, s->irq);
+            s->irq_sts = 0;
 //             TPRINT("timer irq cleared\n");;
         }
         break;
@@ -137,6 +131,7 @@ static void tegra_timer_priv_reset(DeviceState *dev)
 
     s->ptv.reg32 = PTV_RESET;
     s->pcr.reg32 = PCR_RESET;
+    s->irq_sts = 0;
 }
 
 static const MemoryRegionOps tegra_timer_mem_ops = {

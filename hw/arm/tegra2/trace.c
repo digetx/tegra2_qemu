@@ -20,10 +20,15 @@
 #define LOCAL_SOCKET
 
 #include <sysemu/sysemu.h>
+#include "hw/ptimer.h"
+#include "hw/sysbus.h"
 #include "qemu/sockets.h"
 #include "qemu/thread.h"
 
 #include "ahb/host1x/include/host1x_cdma.h"
+#include "ppsb/timer/timer_us.h"
+#include "ppsb/timer/timer.h"
+#include "devices.h"
 #include "tegra_trace.h"
 
 #define SOCKET_FILE     "/tmp/trace.sock"
@@ -159,9 +164,45 @@ void tegra_trace_cdma(uint32_t data, uint32_t is_gather, uint32_t ch_id)
     send_all(msgsock, &W, sizeof(W));
 }
 
+#define CMD_CHANGE_TIMERS_FREQ      0x122
+
+#ifdef TEGRA_TRACE
+static void * trace_viewer_cmd_handler(void *arg)
+{
+    tegra_timer_us **timer_us = (void *) &tegra_timer_us_dev;
+    tegra_timer **timer3 = (void *) &tegra_timer3_dev;
+    tegra_timer **timer2 = (void *) &tegra_timer2_dev;
+    uint32_t freq;
+    uint32_t cmd;
+
+    for (;;) {
+        recv_all(msgsock, &cmd, sizeof(cmd), 0);
+
+        switch (cmd) {
+        case CMD_CHANGE_TIMERS_FREQ:
+            recv_all(msgsock, &freq, sizeof(freq), 0);
+            /* Does't include ARM's MPtimer!  */
+            ptimer_set_freq((*timer_us)->ptimer, freq);
+            ptimer_set_freq((*timer3)->ptimer, freq);
+            ptimer_set_freq((*timer2)->ptimer, freq);
+            break;
+        default:
+            if (errno == 0) {
+                fprintf(stderr, "%s unknown cmd 0x%X\n", __func__, cmd);
+            } else {
+                sleep(1);
+            }
+        }
+    }
+
+    return NULL;
+}
+#endif // TEGRA_TRACE
+
 void tegra_trace_init(void)
 {
 #ifdef TEGRA_TRACE
+    QemuThread trace_cmd_thread;
     static int sock = -1;
 
     if (msgsock != -1) {
@@ -183,6 +224,10 @@ void tegra_trace_init(void)
     if (listen(sock, 1) < 0) {
         error_setg_errno(&error_abort, errno, "Failed to listen on socket");
     }
+
+    qemu_thread_create(&trace_cmd_thread, "trace_cmd_handler",
+                       trace_viewer_cmd_handler,
+                       NULL, QEMU_THREAD_DETACHED);
 
 WAIT:
     printf("Waiting for trace viewer connection...\n");

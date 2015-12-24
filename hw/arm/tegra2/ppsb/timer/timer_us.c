@@ -26,17 +26,8 @@
 
 #define TYPE_TEGRA_TIMER_US "tegra.timer_us"
 #define TEGRA_TIMER_US(obj) OBJECT_CHECK(tegra_timer_us, (obj), TYPE_TEGRA_TIMER_US)
-#define DEFINE_REG32(reg) reg##_t reg
 
-typedef struct tegra_timer_us_state {
-    SysBusDevice parent_obj;
-
-    MemoryRegion iomem;
-    ptimer_state *ptimer;
-    DEFINE_REG32(cntr_1us);
-    DEFINE_REG32(usec_cfg);
-    DEFINE_REG32(cntr_freeze);
-} tegra_timer_us;
+#define SCALE   1
 
 static const VMStateDescription vmstate_tegra_timer_us = {
     .name = "tegra.timer_us",
@@ -75,7 +66,7 @@ static uint64_t tegra_timer_us_priv_read(void *opaque, hwaddr offset,
         break;
     }
 
-//     TRACE_READ(s->iomem.addr, offset, ret);
+    TRACE_READ(s->iomem.addr, offset, ret);
 
     return ret;
 }
@@ -129,7 +120,7 @@ static int tegra_timer_us_priv_init(SysBusDevice *dev)
     sysbus_init_mmio(dev, &s->iomem);
 
     s->ptimer = ptimer_init(NULL);
-    ptimer_set_freq(s->ptimer, 1000000);
+    ptimer_set_freq(s->ptimer, 1000000 * SCALE);
     ptimer_set_limit(s->ptimer, 0xffffffff, 1);
 
     return 0;

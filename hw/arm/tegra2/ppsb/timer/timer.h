@@ -49,4 +49,17 @@ typedef union pcr_u {
     uint32_t reg32;
 } pcr_t;
 
+#define DEFINE_REG32(reg) reg##_t reg
+
+typedef struct tegra_timer_state {
+    SysBusDevice parent_obj;
+
+    MemoryRegion iomem;
+    ptimer_state *ptimer;
+    DEFINE_REG32(ptv);
+    DEFINE_REG32(pcr);
+    qemu_irq irq;
+    int irq_sts;
+} tegra_timer;
+
 #endif // TEGRA_TIMER_H
