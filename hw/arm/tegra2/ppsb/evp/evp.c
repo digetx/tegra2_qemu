@@ -196,9 +196,11 @@ static void tegra_cpu_do_interrupt(CPUState *cs)
         break;
     case EXCP_PREFETCH_ABORT:
         irq_vector_addr = s->evp_regs[1][3];
+        hw_error("Base updated abort model not implemented");
         break;
     case EXCP_DATA_ABORT:
         irq_vector_addr = s->evp_regs[1][4];
+        hw_error("Base updated abort model not implemented");
         break;
     case EXCP_IRQ:
         irq_vector_addr = s->evp_regs[1][6];
