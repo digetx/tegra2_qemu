@@ -102,7 +102,7 @@ static QemuMutex io_mutex;
 static QemuEvent read_ev;
 static uint32_t read_val;
 
-static void remote_irq_handle(struct  remote_io_irq_notify *inotify)
+static void remote_irq_handle(struct remote_io_irq_notify *inotify)
 {
     int i;
 
@@ -116,8 +116,8 @@ static void remote_irq_handle(struct  remote_io_irq_notify *inotify)
 
 static void * remote_io_recv_handler(void *arg)
 {
-    struct  remote_io_irq_notify *inotify;
-    struct  remote_io_read_resp *resp;
+    struct remote_io_irq_notify *inotify;
+    struct remote_io_read_resp *resp;
     char buf[REMOTE_IO_PKT_SIZE];
     int magic;
 
@@ -150,7 +150,7 @@ static void * remote_io_recv_handler(void *arg)
 
 uint32_t remote_io_read(uint32_t addr, int size)
 {
-    struct  remote_io_read_req req = {
+    struct remote_io_read_req req = {
         .magic = REMOTE_IO_READ,
         .address = addr,
         .size = size,
@@ -178,7 +178,7 @@ uint32_t remote_io_read(uint32_t addr, int size)
 
 void remote_io_write(uint32_t value, uint32_t addr, int size)
 {
-    struct  remote_io_write_req req = {
+    struct remote_io_write_req req = {
         .magic = REMOTE_IO_WRITE,
         .value = value,
         .address = addr,
@@ -197,7 +197,7 @@ void remote_io_write(uint32_t value, uint32_t addr, int size)
 
 void remote_io_watch_irq(uint32_t base_addr, qemu_irq *irq)
 {
-    struct  remote_io_irq_watch_req req = {
+    struct remote_io_irq_watch_req req = {
         .magic = REMOTE_IO_IRQ_WATCH,
         .irq_nb = (*irq)->n,
     };
