@@ -30,8 +30,8 @@
 /* Keep chunk, used by AVP firmware, locally for faster access.
  * WARNING: IRAM is used by VDE (0x4xx, 0x14xx) and maybe some other HW,
  * carefulness required!!!  */
-#define LOCAL_START (0x1500 - TEGRA_RESET_HANDLER_SIZE)
-#define LOCAL_END   (0x1800 - TEGRA_RESET_HANDLER_SIZE)
+#define LOCAL_START (0x600 - TEGRA_RESET_HANDLER_SIZE)
+#define LOCAL_END   (0x3000 - TEGRA_RESET_HANDLER_SIZE)
 #define LOCAL_ENABLED
 
 typedef struct remote_iram_state {
@@ -45,6 +45,7 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
                                  unsigned size)
 {
     remote_iram *s = TEGRA_REMOTE_IRAM(opaque);
+    uint32_t ret;
 #ifdef LOCAL_ENABLED
     uint16_t *local16 = (uint16_t *) (s->local + offset);
     uint32_t *local32 = (uint32_t *) (s->local + offset);
@@ -61,22 +62,33 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
         case 1:
 //             printf("read%d offset 0x%08X value 0x%08X\n",
 //                    size, (uint32_t) offset, (uint32_t) s->local[offset]);
-            return s->local[offset];
+            ret = s->local[offset];
+            break;
         case 2:
 //             printf("read%d offset 0x%08X value 0x%08X\n",
 //                    size, (uint32_t) offset, (uint32_t) *(local16));
-            return *(local16);
+            ret = *(local16);
+            break;
         case 4:
 //             printf("read%d offset 0x%08X value 0x%08X\n",
 //                    size, (uint32_t) offset, (uint32_t) *(local32));
-            return *(local32);
+            ret = *(local32);
+            break;
         }
+        break;
     default:
+        ret = remote_io_read(s->iomem.addr + offset, size << 3);
         break;
     }
+
+    return ret;
+#else
+    ret = remote_io_read(s->iomem.addr + offset, size << 3);
 #endif
 
-    return remote_io_read(s->iomem.addr + offset, size << 3);
+    TRACE_READ_MEM(s->iomem.addr, offset, ret, size);
+
+    return ret;
 }
 
 static void remote_iram_write(void *opaque, hwaddr offset,
@@ -113,6 +125,8 @@ static void remote_iram_write(void *opaque, hwaddr offset,
         break;
     }
 #endif
+
+    TRACE_WRITE_MEM(s->iomem.addr, offset, value, size);
 
     remote_io_write(value, s->iomem.addr + offset, size << 3);
 }

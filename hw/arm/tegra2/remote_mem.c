@@ -36,14 +36,19 @@ static uint64_t remote_mem_read(void *opaque, hwaddr offset,
                                 unsigned size)
 {
     remote_mem *s = TEGRA_REMOTE_MEM(opaque);
+    uint32_t ret = remote_io_read(s->iomem.addr + offset, size << 3);
 
-    return remote_io_read(s->iomem.addr + offset, size << 3);
+    TRACE_READ_MEM(s->iomem.addr, offset, ret, size);
+
+    return ret;
 }
 
 static void remote_mem_write(void *opaque, hwaddr offset,
                              uint64_t value, unsigned size)
 {
     remote_mem *s = TEGRA_REMOTE_MEM(opaque);
+
+    TRACE_WRITE_MEM(s->iomem.addr, offset, value, size);
 
     remote_io_write(value, s->iomem.addr + offset, size << 3);
 }
