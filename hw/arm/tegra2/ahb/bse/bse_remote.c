@@ -29,8 +29,6 @@
 typedef struct bse_remote_state {
     SysBusDevice parent_obj;
 
-    uint32_t regs[14016];
-
     MemoryRegion iomem;
     qemu_irq irq_ucq_error;
     qemu_irq irq_sync_token;
@@ -106,8 +104,6 @@ static uint64_t bse_remote_read(void *opaque, hwaddr offset,
 
     TRACE_READ_EXT(base, offset & mask, ret, !clk_en, rst_set);
 
-    s->regs[offset >> 2] = ret;
-
     return ret;
 }
 
@@ -175,8 +171,7 @@ static void bse_remote_write(void *opaque, hwaddr offset,
         break;
     }
 
-    TRACE_WRITE_EXT(base, offset & mask, s->regs[offset >> 2], value,
-                    !clk_en, rst_set);
+    TRACE_WRITE_EXT(base, offset & mask, value, value, !clk_en, rst_set);
 
     remote_io_write(value, s->iomem.addr + offset, size << 3);
 }
