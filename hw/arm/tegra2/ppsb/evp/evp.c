@@ -218,7 +218,7 @@ static void tegra_cpu_do_interrupt(CPUState *cs)
     env->thumb = 0;
 }
 
-static int tegra_evp_priv_init(SysBusDevice *dev)
+static void tegra_evp_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_evp *s = TEGRA_EVP(dev);
     CPUState *cs = qemu_get_cpu(TEGRA2_COP);
@@ -226,23 +226,20 @@ static int tegra_evp_priv_init(SysBusDevice *dev)
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_evp_mem_ops, s,
                           "tegra.evp", TEGRA_EXCEPTION_VECTORS_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     /* FIXME: lame */
     device_reset( DEVICE(s) );
 
     /* COP follows all EVP vectors.  */
     cc->do_interrupt = tegra_cpu_do_interrupt;
-
-    return 0;
 }
 
 static void tegra_evp_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_evp_priv_init;
+    dc->realize = tegra_evp_priv_realize;
     dc->vmsd = &vmstate_tegra_evp;
     dc->reset = tegra_evp_priv_reset;
 }

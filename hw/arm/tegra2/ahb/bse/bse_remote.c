@@ -182,21 +182,19 @@ static const MemoryRegionOps bse_remote_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_vde_bse_priv_init(SysBusDevice *dev)
+static void tegra_vde_bse_priv_realize(DeviceState *dev, Error **errp)
 {
     bse_remote *s = TEGRA_BSE_REMOTE(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(s), &bse_remote_mem_ops, s,
                           "tegra.vde_bse", 0xDB00);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq_ucq_error);
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq_sync_token);
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq_bse_v);
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq_bse_a);
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq_sxe);
-
-    return 0;
 }
 
 static void tegra_vde_bse_priv_reset(DeviceState *dev)
@@ -212,10 +210,9 @@ static void tegra_vde_bse_priv_reset(DeviceState *dev)
 
 static void bse_remote_remote_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_vde_bse_priv_init;
+    dc->realize = tegra_vde_bse_priv_realize;
     dc->reset = tegra_vde_bse_priv_reset;
 }
 

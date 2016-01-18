@@ -443,23 +443,20 @@ static const MemoryRegionOps tegra_ahb_gizmo_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_ahb_gizmo_priv_init(SysBusDevice *dev)
+static void tegra_ahb_gizmo_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_ahb_gizmo *s = TEGRA_AHB_GIZMO(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_ahb_gizmo_mem_ops, s,
                           "tegra.ahb_gizmo", TEGRA_AHB_GIZMO_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void tegra_ahb_gizmo_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_ahb_gizmo_priv_init;
+    dc->realize = tegra_ahb_gizmo_priv_realize;
     dc->vmsd = &vmstate_tegra_ahb_gizmo;
     dc->reset = tegra_ahb_gizmo_priv_reset;
 }

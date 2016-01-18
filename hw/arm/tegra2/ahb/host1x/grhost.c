@@ -44,39 +44,25 @@ typedef struct tegra_grhost_state {
     qemu_irq cpu_general_irq;
 } tegra_grhost;
 
-static void tegra_grhost_priv_initfn(Object *obj)
+static void tegra_grhost_add_channel(MemoryRegion *container,
+                                     tegra_host1x_channel *ch, int id)
 {
-    tegra_grhost *s = TEGRA_GRHOST(obj);
-    int i;
-
-    memory_region_init(&s->container, obj, "grhost-container",
-                       TEGRA_GRHOST_SIZE);
-    sysbus_init_mmio(SYS_BUS_DEVICE(obj), &s->container);
-
-    for (i = 0; i < CHANNELS_NB; i++) {
-        object_initialize(&s->channels[i], sizeof(s->channels[i]),
-                          "tegra.host1x_channel");
-        qdev_set_parent_bus(DEVICE(&s->channels[i]), sysbus_get_default());
-
-        host1x_init_cdma(&s->channels[i].cdma, i);
-    }
-}
-
-static void tegra_grhost_realize_subdev(MemoryRegion *container, void *state,
-                                        hwaddr offset)
-{
-    SysBusDevice *busdev = SYS_BUS_DEVICE(state);
-
-    object_property_set_bool(OBJECT(state), true, "realized", &error_abort);
-
-    memory_region_add_subregion(container, offset,
-                                sysbus_mmio_get_region(busdev, 0));
+    object_initialize(ch, sizeof(*ch), "tegra.host1x_channel");
+    qdev_set_parent_bus(DEVICE(ch), sysbus_get_default());
+    object_property_set_bool(OBJECT(ch), true, "realized", &error_abort);
+    memory_region_add_subregion(container, id * SZ_16K,
+                                sysbus_mmio_get_region(SYS_BUS_DEVICE(ch), 0));
+    host1x_init_cdma(&ch->cdma, id);
 }
 
 static void tegra_grhost_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_grhost *s = TEGRA_GRHOST(dev);
     int i;
+
+    memory_region_init(&s->container, OBJECT(s), "grhost-container",
+                       TEGRA_GRHOST_SIZE);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->container);
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->cop_syncpts_irq);
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->cpu_syncpts_irq);
@@ -88,7 +74,7 @@ static void tegra_grhost_priv_realize(DeviceState *dev, Error **errp)
     host1x_init_dma();
 
     for (i = 0; i < CHANNELS_NB; i++)
-        tegra_grhost_realize_subdev(&s->container, &s->channels[i], i * SZ_16K);
+        tegra_grhost_add_channel(&s->container, &s->channels[i], i);
 }
 
 static void tegra_grhost_priv_reset(DeviceState *dev)
@@ -111,7 +97,6 @@ static const TypeInfo tegra_grhost_info = {
     .name = TYPE_TEGRA_GRHOST,
     .parent = TYPE_SYS_BUS_DEVICE,
     .instance_size = sizeof(tegra_grhost),
-    .instance_init = tegra_grhost_priv_initfn,
     .class_init = tegra_grhost_class_init,
 };
 

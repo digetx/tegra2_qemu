@@ -68,15 +68,13 @@ static const MemoryRegionOps tegra_tfe_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_vde_tfe_priv_init(SysBusDevice *dev)
+static void tegra_vde_tfe_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_tfe *s = TEGRA_VDE_TFE(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(s), &tegra_tfe_mem_ops, s,
                           "tegra.vde_tfe", 256);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void tegra_vde_tfe_priv_reset(DeviceState *dev)
@@ -116,10 +114,9 @@ static void tegra_vde_tfe_priv_reset(DeviceState *dev)
 
 static void tegra_vde_tfe_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_vde_tfe_priv_init;
+    dc->realize = tegra_vde_tfe_priv_realize;
     dc->reset = tegra_vde_tfe_priv_reset;
 }
 

@@ -424,17 +424,15 @@ static const MemoryRegionOps tegra_bse_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_bse_priv_init(SysBusDevice *dev)
+static void tegra_bse_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_bse *s = TEGRA_BSE(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_bse_mem_ops, s,
                           "tegra.bsea", TEGRA_BSEA_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq);
-
-    return 0;
 }
 
 static Property tegra_bse_props[] = {
@@ -447,10 +445,9 @@ static Property tegra_bse_props[] = {
 
 static void tegra_bse_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_bse_priv_init;
+    dc->realize = tegra_bse_priv_realize;
     dc->vmsd = &vmstate_tegra_bse;
     dc->props = tegra_bse_props;
     dc->reset = tegra_bse_priv_reset;

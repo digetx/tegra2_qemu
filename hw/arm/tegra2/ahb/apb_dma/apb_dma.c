@@ -1129,23 +1129,20 @@ static const MemoryRegionOps tegra_apb_dma_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_apb_dma_priv_init(SysBusDevice *dev)
+static void tegra_apb_dma_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_apb_dma *s = TEGRA_APB_DMA(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_apb_dma_mem_ops, s,
                           "tegra.apb_dma", 0x1200);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void tegra_apb_dma_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_apb_dma_priv_init;
+    dc->realize = tegra_apb_dma_priv_realize;
     dc->vmsd = &vmstate_tegra_apb_dma;
     dc->reset = tegra_apb_dma_priv_reset;
 }

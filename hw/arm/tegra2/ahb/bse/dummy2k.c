@@ -72,15 +72,13 @@ static const MemoryRegionOps tegra_dummy_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_bse_dummy_priv_init(SysBusDevice *dev)
+static void tegra_bse_dummy_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_dummy *s = TEGRA_DUMMY(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(s), &tegra_dummy_mem_ops, s,
                           "tegra.bse_dummy", 0x800);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void tegra_bse_dummy_priv_reset(DeviceState *dev)
@@ -95,10 +93,9 @@ static void tegra_bse_dummy_priv_reset(DeviceState *dev)
 
 static void tegra_bse_dummy_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_bse_dummy_priv_init;
+    dc->realize = tegra_bse_dummy_priv_realize;
     dc->reset = tegra_bse_dummy_priv_reset;
 }
 

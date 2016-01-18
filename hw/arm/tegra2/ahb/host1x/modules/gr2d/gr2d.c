@@ -245,13 +245,13 @@ static const MemoryRegionOps tegra_gr2d_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_gr2d_priv_init(SysBusDevice *dev)
+static void tegra_gr2d_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_gr2d *s = TEGRA_GR2D(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_gr2d_mem_ops, s,
                           "tegra.gr2d", SZ_256K);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     s->gr2d_module.class_id = 0x51,
     s->gr2d_module.reg_write = gr2d_write;
@@ -264,16 +264,13 @@ static int tegra_gr2d_priv_init(SysBusDevice *dev)
     s->gr2d_sb_module.reg_read = gr2d_read;
 
     register_host1x_bus_module(&s->gr2d_sb_module, &s->regs);
-
-    return 0;
 }
 
 static void tegra_gr2d_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_gr2d_priv_init;
+    dc->realize = tegra_gr2d_priv_realize;
     dc->vmsd = &vmstate_tegra_gr2d;
     dc->reset = tegra_gr2d_priv_reset;
 }

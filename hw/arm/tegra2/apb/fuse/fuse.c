@@ -817,23 +817,20 @@ static const MemoryRegionOps tegra_fuse_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_fuse_priv_init(SysBusDevice *dev)
+static void tegra_fuse_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_fuse *s = TEGRA_FUSE(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_fuse_mem_ops, s,
                           "tegra.fuse", TEGRA_FUSE_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void tegra_fuse_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_fuse_priv_init;
+    dc->realize = tegra_fuse_priv_realize;
     dc->vmsd = &vmstate_tegra_fuse;
     dc->reset = tegra_fuse_priv_reset;
 }

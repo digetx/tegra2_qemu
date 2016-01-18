@@ -267,27 +267,24 @@ static const MemoryRegionOps tegra_gpio_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_gpio_priv_init(SysBusDevice *dev)
+static void tegra_gpio_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_gpio *s = TEGRA_GPIO(dev);
     int i;
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_gpio_mem_ops, s,
                           "tegra.gpio", TEGRA_GPIO_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     for (i = 0; i < BANKS_NB; i++)
         sysbus_init_irq(SYS_BUS_DEVICE(dev), &s->irq[i]);
-
-    return 0;
 }
 
 static void tegra_gpio_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_gpio_priv_init;
+    dc->realize = tegra_gpio_priv_realize;
     dc->vmsd = &vmstate_tegra_gpio;
     dc->reset = tegra_gpio_priv_reset;
 }

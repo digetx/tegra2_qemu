@@ -634,7 +634,7 @@ static const MemoryRegionOps tegra_flow_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_flow_priv_init(SysBusDevice *dev)
+static void tegra_flow_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_flow *s = TEGRA_FLOW_CTRL(dev);
     int i;
@@ -644,7 +644,7 @@ static int tegra_flow_priv_init(SysBusDevice *dev)
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_flow_mem_ops, s,
                           "tegra.flow", TEGRA_FLOW_CTRL_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     for (i = 0; i < TEGRA2_NCPUS; i++) {
         tegra_flow_timer_arg *arg = g_malloc0(sizeof(tegra_flow_timer_arg));
@@ -656,16 +656,13 @@ static int tegra_flow_priv_init(SysBusDevice *dev)
         s->ptimer[i] = ptimer_init(bh);
         ptimer_set_freq(s->ptimer[i], 1000000);
     }
-
-    return 0;
 }
 
 static void tegra_flow_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_flow_priv_init;
+    dc->realize = tegra_flow_priv_realize;
     dc->vmsd = &vmstate_tegra_flow;
     dc->reset = tegra_flow_priv_reset;
 }

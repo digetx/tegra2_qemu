@@ -208,7 +208,7 @@ static const GraphicHwOps tegra_dc_ops = {
     .gfx_update = tegra_dc_compose,
 };
 
-static int tegra_dc_priv_init(SysBusDevice *dev)
+static void tegra_dc_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_dc *s = TEGRA_DC(dev);
 
@@ -216,7 +216,7 @@ static int tegra_dc_priv_init(SysBusDevice *dev)
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_dc_mem_ops, s,
                           "tegra.dc", TEGRA_DISPLAY_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     init_window(&s->win_a, WIN_A_CAPS);
     init_window(&s->win_b, WIN_B_CAPS);
@@ -224,8 +224,6 @@ static int tegra_dc_priv_init(SysBusDevice *dev)
 
     s->console = graphic_console_init(DEVICE(dev), 0, &tegra_dc_ops, s);
     qemu_console_resize(s->console, s->disp_width, s->disp_height);
-
-    return 0;
 }
 
 static Property tegra_dc_properties[] = {
@@ -236,10 +234,9 @@ static Property tegra_dc_properties[] = {
 
 static void tegra_dc_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_dc_priv_init;
+    dc->realize = tegra_dc_priv_realize;
     dc->reset = tegra_dc_priv_reset;
     dc->props = tegra_dc_properties;
 }

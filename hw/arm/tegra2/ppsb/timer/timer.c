@@ -140,7 +140,7 @@ static const MemoryRegionOps tegra_timer_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_timer_priv_init(SysBusDevice *dev)
+static void tegra_timer_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_timer *s = TEGRA_TIMER(dev);
     QEMUBH *bh = qemu_bh_new(tegra_timer_alarm, s);
@@ -149,20 +149,17 @@ static int tegra_timer_priv_init(SysBusDevice *dev)
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_timer_mem_ops, s,
                           "tegra.timer", 0x8);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     s->ptimer = ptimer_init(bh);
     ptimer_set_freq(s->ptimer, 1000000 * SCALE);
-
-    return 0;
 }
 
 static void tegra_timer_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_timer_priv_init;
+    dc->realize = tegra_timer_priv_realize;
     dc->vmsd = &vmstate_tegra_timer;
     dc->reset = tegra_timer_priv_reset;
 }

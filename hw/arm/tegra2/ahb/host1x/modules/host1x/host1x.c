@@ -73,29 +73,26 @@ static const MemoryRegionOps tegra_host1x_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_host1x_priv_init(SysBusDevice *dev)
+static void tegra_host1x_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_host1x *s = TEGRA_HOST1X(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_host1x_mem_ops, s,
                           "tegra.host1x", TEGRA_HOST1X_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     s->host1x_module.class_id = 0x1,
     s->host1x_module.reg_write = host1x_write;
     s->host1x_module.reg_read = host1x_read;
 
     register_host1x_bus_module(&s->host1x_module, &s->regs);
-
-    return 0;
 }
 
 static void tegra_host1x_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_host1x_priv_init;
+    dc->realize = tegra_host1x_priv_realize;
     dc->vmsd = &vmstate_tegra_host1x;
 }
 

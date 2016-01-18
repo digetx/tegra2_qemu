@@ -60,22 +60,20 @@ static const MemoryRegionOps tegra_pg_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_pg_priv_init(SysBusDevice *dev)
+static void tegra_pg_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_pg *s = TEGRA_PG(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_pg_mem_ops, s,
                           "tegra.pg", SZ_4K);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void tegra_pg_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+    DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_pg_priv_init;
+    dc->realize = tegra_pg_priv_realize;
 }
 
 static const TypeInfo tegra_pg_info = {

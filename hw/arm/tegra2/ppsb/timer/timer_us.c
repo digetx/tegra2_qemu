@@ -111,27 +111,24 @@ static const MemoryRegionOps tegra_timer_us_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_timer_us_priv_init(SysBusDevice *dev)
+static void tegra_timer_us_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_timer_us *s = TEGRA_TIMER_US(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_timer_us_mem_ops, s,
                           "tegra.timer_us", TEGRA_TMRUS_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     s->ptimer = ptimer_init(NULL);
     ptimer_set_freq(s->ptimer, 1000000 * SCALE);
     ptimer_set_limit(s->ptimer, 0xffffffff, 1);
-
-    return 0;
 }
 
 static void tegra_timer_us_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_timer_us_priv_init;
+    dc->realize = tegra_timer_us_priv_realize;
     dc->vmsd = &vmstate_tegra_timer_us;
     dc->reset = tegra_timer_us_priv_reset;
 }

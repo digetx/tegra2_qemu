@@ -59,22 +59,20 @@ static const MemoryRegionOps remote_mem_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int remote_mem_priv_init(SysBusDevice *dev)
+static void remote_mem_priv_realize(DeviceState *dev, Error **errp)
 {
     remote_mem *s = TEGRA_REMOTE_MEM(dev);
 
     memory_region_init_io(&s->iomem, OBJECT(s), &remote_mem_mem_ops, s,
                           "tegra.remote_mem", 0x10000000);
-    sysbus_init_mmio(dev, &s->iomem);
-
-    return 0;
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
 static void remote_mem_remote_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
+    DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = remote_mem_priv_init;
+    dc->realize = remote_mem_priv_realize;
 }
 
 static const TypeInfo remote_mem_info = {

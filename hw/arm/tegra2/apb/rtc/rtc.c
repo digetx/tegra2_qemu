@@ -343,7 +343,7 @@ static const MemoryRegionOps tegra_rtc_mem_ops = {
     .endianness = DEVICE_LITTLE_ENDIAN,
 };
 
-static int tegra_rtc_priv_init(SysBusDevice *dev)
+static void tegra_rtc_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_rtc *s = TEGRA_RTC(dev);
     QEMUBH *bh;
@@ -352,7 +352,7 @@ static int tegra_rtc_priv_init(SysBusDevice *dev)
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_rtc_mem_ops, s,
                           "tegra.rtc", TEGRA_RTC_SIZE);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     s->p_rtc_sec = ptimer_init(NULL);
     ptimer_set_freq(s->p_rtc_sec, 1);
@@ -381,16 +381,13 @@ static int tegra_rtc_priv_init(SysBusDevice *dev)
     bh = qemu_bh_new(tegra_rtc_ms_cnt_alarm, s);
     s->p_ms_cnt_alarm = ptimer_init(bh);
     ptimer_set_freq(s->p_ms_cnt_alarm, 1000);
-
-    return 0;
 }
 
 static void tegra_rtc_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_rtc_priv_init;
+    dc->realize = tegra_rtc_priv_realize;
     dc->vmsd = &vmstate_tegra_rtc;
     dc->reset = tegra_rtc_priv_reset;
 }

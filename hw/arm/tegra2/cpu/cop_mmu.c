@@ -184,26 +184,23 @@ static hwaddr tegra_cop_mmu_translate(hwaddr addr, int access_type)
     return addr;
 }
 
-static int tegra_cop_mmu_priv_init(SysBusDevice *dev)
+static void tegra_cop_mmu_priv_realize(DeviceState *dev, Error **errp)
 {
     tegra_cop_mmu *s = TEGRA_COP_MMU(dev);
     CPUState *cs = qemu_get_cpu(TEGRA2_COP);
 
     memory_region_init_io(&s->iomem, OBJECT(dev), &tegra_cop_mmu_mem_ops, s,
                           "tegra.cop_mmu", SZ_64K);
-    sysbus_init_mmio(dev, &s->iomem);
+    sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
     ARM_CPU(cs)->translate_addr = tegra_cop_mmu_translate;
-
-    return 0;
 }
 
 static void tegra_cop_mmu_class_init(ObjectClass *klass, void *data)
 {
-    SysBusDeviceClass *k = SYS_BUS_DEVICE_CLASS(klass);
     DeviceClass *dc = DEVICE_CLASS(klass);
 
-    k->init = tegra_cop_mmu_priv_init;
+    dc->realize = tegra_cop_mmu_priv_realize;
     dc->vmsd = &vmstate_tegra_cop_mmu;
     dc->reset = tegra_cop_mmu_priv_reset;
 }
