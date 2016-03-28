@@ -65,7 +65,7 @@ static void tegra_frameid_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_frameid_mem_ops = {
     .read = tegra_frameid_read,
     .write = tegra_frameid_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_vde_frameid_priv_realize(DeviceState *dev, Error **errp)

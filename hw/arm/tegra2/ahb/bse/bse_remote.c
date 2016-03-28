@@ -179,7 +179,7 @@ static void bse_remote_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps bse_remote_mem_ops = {
     .read = bse_remote_read,
     .write = bse_remote_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_vde_bse_priv_realize(DeviceState *dev, Error **errp)

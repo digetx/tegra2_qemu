@@ -136,7 +136,7 @@ static void remote_iram_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps remote_iram_iram_ops = {
     .read = remote_iram_read,
     .write = remote_iram_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void remote_iram_priv_realize(DeviceState *dev, Error **errp)

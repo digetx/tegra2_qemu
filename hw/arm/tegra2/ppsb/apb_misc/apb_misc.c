@@ -983,7 +983,7 @@ static void tegra_apb_misc_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_apb_misc_mem_ops = {
     .read = tegra_apb_misc_priv_read,
     .write = tegra_apb_misc_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_apb_misc_priv_realize(DeviceState *dev, Error **errp)

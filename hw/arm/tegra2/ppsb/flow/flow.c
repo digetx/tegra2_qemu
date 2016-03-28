@@ -631,7 +631,7 @@ static void tegra_flow_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_flow_mem_ops = {
     .read = tegra_flow_priv_read,
     .write = tegra_flow_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_flow_priv_realize(DeviceState *dev, Error **errp)

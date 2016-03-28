@@ -115,7 +115,7 @@ static void tegra_arb_gnt_ictlr_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_arb_gnt_ictlr_mem_ops = {
     .read = tegra_arb_gnt_ictlr_priv_read,
     .write = tegra_arb_gnt_ictlr_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_arb_gnt_ictlr_realize(DeviceState *dev, Error **errp)

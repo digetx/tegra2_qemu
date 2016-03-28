@@ -359,7 +359,7 @@ static void tegra_i2c_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_i2c_ops = {
     .read = tegra_i2c_read,
     .write = tegra_i2c_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_i2c_init(Object *obj)

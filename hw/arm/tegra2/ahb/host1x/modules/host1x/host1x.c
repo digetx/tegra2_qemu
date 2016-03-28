@@ -70,7 +70,7 @@ static void tegra_host1x_priv_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_host1x_mem_ops = {
     .read = tegra_host1x_priv_read,
     .write = tegra_host1x_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_host1x_priv_realize(DeviceState *dev, Error **errp)

@@ -179,7 +179,7 @@ static void tegra_uart_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_uart_mem_ops = {
     .read = tegra_uart_priv_read,
     .write = tegra_uart_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_uart_priv_realize(DeviceState *dev, Error **errp)

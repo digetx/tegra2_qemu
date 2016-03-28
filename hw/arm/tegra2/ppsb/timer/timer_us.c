@@ -108,7 +108,7 @@ static void tegra_timer_us_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_timer_us_mem_ops = {
     .read = tegra_timer_us_priv_read,
     .write = tegra_timer_us_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_timer_us_priv_realize(DeviceState *dev, Error **errp)

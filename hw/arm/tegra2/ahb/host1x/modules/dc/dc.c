@@ -172,7 +172,7 @@ static void tegra_dc_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_dc_mem_ops = {
     .read = tegra_dc_priv_read,
     .write = tegra_dc_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_dc_compose_window(QemuConsole *console, display_window *win)

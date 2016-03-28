@@ -264,7 +264,7 @@ static void tegra_gpio_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_gpio_mem_ops = {
     .read = tegra_gpio_priv_read,
     .write = tegra_gpio_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_gpio_priv_realize(DeviceState *dev, Error **errp)

@@ -1309,7 +1309,7 @@ static void tegra_car_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_car_mem_ops = {
     .read = tegra_car_priv_read,
     .write = tegra_car_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_car_priv_realize(DeviceState *dev, Error **errp)

@@ -157,7 +157,7 @@ static void tegra_cop_mmu_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_cop_mmu_mem_ops = {
     .read = tegra_cop_mmu_priv_read,
     .write = tegra_cop_mmu_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static hwaddr tegra_cop_mmu_translate(hwaddr addr, int access_type)

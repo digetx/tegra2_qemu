@@ -57,7 +57,7 @@ static void tegra_pg_priv_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_pg_mem_ops = {
     .read = tegra_pg_priv_read,
     .write = tegra_pg_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_pg_priv_realize(DeviceState *dev, Error **errp)

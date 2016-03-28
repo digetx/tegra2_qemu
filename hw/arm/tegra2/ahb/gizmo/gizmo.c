@@ -440,7 +440,7 @@ static void tegra_ahb_gizmo_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_ahb_gizmo_mem_ops = {
     .read = tegra_ahb_gizmo_priv_read,
     .write = tegra_ahb_gizmo_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_ahb_gizmo_priv_realize(DeviceState *dev, Error **errp)

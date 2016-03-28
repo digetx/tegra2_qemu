@@ -65,7 +65,7 @@ static void tegra_vdma_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_vdma_mem_ops = {
     .read = tegra_vdma_read,
     .write = tegra_vdma_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_vde_vdma_priv_realize(DeviceState *dev, Error **errp)

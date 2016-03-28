@@ -340,7 +340,7 @@ static void tegra_rtc_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_rtc_mem_ops = {
     .read = tegra_rtc_priv_read,
     .write = tegra_rtc_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_rtc_priv_realize(DeviceState *dev, Error **errp)

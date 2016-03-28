@@ -314,7 +314,7 @@ static void tegra_ictlr_realize(DeviceState *dev, Error **errp)
 static const MemoryRegionOps tegra_ictlr_mem_ops = {
     .read = tegra_ictlr_read,
     .write = tegra_ictlr_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_ictlr_init(Object *obj)

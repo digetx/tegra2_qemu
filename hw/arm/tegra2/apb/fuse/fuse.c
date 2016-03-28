@@ -814,7 +814,7 @@ static void tegra_fuse_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_fuse_mem_ops = {
     .read = tegra_fuse_priv_read,
     .write = tegra_fuse_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_fuse_priv_realize(DeviceState *dev, Error **errp)

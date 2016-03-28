@@ -438,7 +438,7 @@ static void tegra_bse_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_bse_mem_ops = {
     .read = tegra_bse_priv_read,
     .write = tegra_bse_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_bse_priv_realize(DeviceState *dev, Error **errp)

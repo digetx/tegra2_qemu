@@ -69,7 +69,7 @@ static void tegra_dummy_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_dummy_mem_ops = {
     .read = tegra_dummy_read,
     .write = tegra_dummy_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_bse_dummy_priv_realize(DeviceState *dev, Error **errp)

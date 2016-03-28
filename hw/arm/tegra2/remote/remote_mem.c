@@ -56,7 +56,7 @@ static void remote_mem_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps remote_mem_mem_ops = {
     .read = remote_mem_read,
     .write = remote_mem_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void remote_mem_priv_realize(DeviceState *dev, Error **errp)

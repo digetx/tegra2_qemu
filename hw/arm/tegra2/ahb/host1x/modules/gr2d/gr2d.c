@@ -242,7 +242,7 @@ static void tegra_gr2d_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_gr2d_mem_ops = {
     .read = tegra_gr2d_priv_read,
     .write = tegra_gr2d_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_gr2d_priv_realize(DeviceState *dev, Error **errp)

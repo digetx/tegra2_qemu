@@ -681,7 +681,7 @@ static void tegra_host1x_channel_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_host1x_channel_mem_ops = {
     .read = tegra_host1x_channel_priv_read,
     .write = tegra_host1x_channel_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_host1x_channel_realize(DeviceState *dev, Error **errp)

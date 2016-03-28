@@ -1491,7 +1491,7 @@ static void tegra_emc_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_emc_mem_ops = {
     .read = tegra_emc_priv_read,
     .write = tegra_emc_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_emc_priv_realize(DeviceState *dev, Error **errp)

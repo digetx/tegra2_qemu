@@ -112,7 +112,7 @@ static void tegra_usb_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_usb_mem_ops = {
     .read = tegra_usb_priv_read,
     .write = tegra_usb_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_usb_priv_init(Object *obj)

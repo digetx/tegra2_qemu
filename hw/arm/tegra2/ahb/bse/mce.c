@@ -65,7 +65,7 @@ static void tegra_mce_write(void *opaque, hwaddr offset,
 static const MemoryRegionOps tegra_mce_mem_ops = {
     .read = tegra_mce_read,
     .write = tegra_mce_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_vde_mce_priv_realize(DeviceState *dev, Error **errp)

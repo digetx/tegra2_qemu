@@ -169,7 +169,7 @@ static void tegra_evp_priv_reset(DeviceState *dev)
 static const MemoryRegionOps tegra_evp_mem_ops = {
     .read = tegra_evp_priv_read,
     .write = tegra_evp_priv_write,
-    .endianness = DEVICE_LITTLE_ENDIAN,
+    .endianness = DEVICE_NATIVE_ENDIAN,
 };
 
 static void tegra_cpu_do_interrupt(CPUState *cs)
