@@ -82,13 +82,11 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
         ret = remote_io_read(s->iomem.addr + offset, size << 3);
         break;
     }
-
-    return ret;
 #else
     ret = remote_io_read(s->iomem.addr + offset, size << 3);
-#endif
 
     TRACE_READ_MEM(s->iomem.addr, offset, ret, size);
+#endif
 
     return ret;
 }
