@@ -74,6 +74,8 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
 //                    size, (uint32_t) offset, (uint32_t) *(local32));
             ret = *(local32);
             break;
+        default:
+            g_assert_not_reached();
         }
         break;
     default:
@@ -120,6 +122,8 @@ static void remote_iram_write(void *opaque, hwaddr offset,
         case 4:
             *(local32) = value;
             return;
+        default:
+            g_assert_not_reached();
         }
     default:
         break;
