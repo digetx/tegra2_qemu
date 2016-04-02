@@ -87,6 +87,17 @@ struct __pak remote_io_irq_notify {
     uint32_t sts;
 };
 
+#define REMOTE_IO_READ_MEM_RANGE 0x5
+
+struct __pak remote_io_read_range_req {
+    uint8_t magic;
+    uint32_t address;
+    uint32_t size;
+    uint8_t __pad8;
+};
+
+#define REMOTE_IO_READ_MEM_RANGE_RESP 0x6
+
 struct remote_irq {
     qemu_irq *irq;
     uint32_t base_addr;
@@ -101,6 +112,8 @@ static QemuThread recv_thread;
 static QemuMutex io_mutex;
 static QemuEvent read_ev;
 static uint32_t read_val;
+static void *read_range_data;
+static uint32_t read_range_size;
 
 static void remote_irq_handle(struct remote_io_irq_notify *inotify)
 {
@@ -122,7 +135,7 @@ static void * remote_io_recv_handler(void *arg)
     int magic;
 
     for (;;) {
-        if (recv_all(sock, buf, sizeof(buf), 0) != sizeof(buf)) {
+        if (recv_all(sock, buf, sizeof(buf), 0) < sizeof(buf)) {
             hw_error("%s failed\n", __func__);
         }
 
@@ -140,12 +153,45 @@ static void * remote_io_recv_handler(void *arg)
 
             remote_irq_handle(inotify);
             break;
+        case REMOTE_IO_READ_MEM_RANGE_RESP:
+            if (recv_all(sock, read_range_data, read_range_size, 0) < read_range_size) {
+                hw_error("%s read_range_size failed\n", __func__);
+            }
+
+            qemu_event_set(&read_ev);
+            break;
         default:
             hw_error("%s bad magic %d\n", __func__, magic);
         }
     }
 
     return NULL;
+}
+
+void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size)
+{
+    struct remote_io_read_range_req req = {
+        .magic = REMOTE_IO_READ_MEM_RANGE,
+        .address = addr,
+        .size = size,
+    };
+
+    read_range_data = data;
+    read_range_size = size;
+
+    if (sock == -1) {
+        return;
+    }
+
+    qemu_mutex_lock(&io_mutex);
+    qemu_event_reset(&read_ev);
+
+    if (send_all(sock, &req, sizeof(req)) < 0) {
+        hw_error("%s failed\n", __func__);
+    }
+
+    qemu_event_wait(&read_ev);
+    qemu_mutex_unlock(&io_mutex);
 }
 
 uint32_t remote_io_read(uint32_t addr, int size)
@@ -188,6 +234,10 @@ void remote_io_write(uint32_t value, uint32_t addr, int size)
 
     if (sock == -1) {
         return;
+    }
+
+    if (addr > 0x60000000) {
+        remote_io_read_cache_invalidate();
     }
 
     if (send_all(sock, &req, sizeof(req)) < 0) {
@@ -263,4 +313,6 @@ void remote_io_init(const char *addr)
 
     qemu_thread_create(&recv_thread, "remote_io_recv", remote_io_recv_handler,
                        NULL, QEMU_THREAD_DETACHED);
+
+    remote_io_read_cache_invalidate();
 }

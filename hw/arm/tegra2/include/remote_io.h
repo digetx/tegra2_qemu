@@ -23,3 +23,5 @@ void remote_io_watch_irq(uint32_t base_addr, qemu_irq *irq);
 void remote_io_rst_set(uint8_t id, int enb);
 void remote_io_clk_set(uint8_t id, int enb);
 void remote_io_init(const char *addr);
+void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size);
+void remote_io_read_cache_invalidate(void);
