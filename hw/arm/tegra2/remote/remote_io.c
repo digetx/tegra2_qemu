@@ -119,6 +119,8 @@ static void remote_irq_handle(struct remote_io_irq_notify *inotify)
 {
     int i;
 
+    remote_io_read_cache_invalidate();
+
     FOREACH_BIT_SET(inotify->upd, i, 32) {
         int irq_nb = inotify->bank * 32 + i;
 
