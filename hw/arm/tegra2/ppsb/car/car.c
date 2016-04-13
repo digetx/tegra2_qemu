@@ -389,8 +389,6 @@ static uint64_t tegra_car_priv_read(void *opaque, hwaddr offset,
     tegra_car *s = opaque;
     uint64_t ret = 0;
 
-//     assert(size == 4);
-
     switch (offset) {
     case RST_SOURCE_OFFSET:
         ret = s->rst_source.reg32;
@@ -697,8 +695,6 @@ static void tegra_car_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_car *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case RST_SOURCE_OFFSET:

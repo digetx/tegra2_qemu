@@ -140,8 +140,6 @@ static void tegra_gr2d_priv_write(void *opaque, hwaddr offset,
 {
     tegra_gr2d *s = opaque;
 
-    assert(size == 4);
-
     host1x_module_write(&s->gr2d_module, offset >> 2, value);
 }
 

@@ -195,8 +195,6 @@ static uint64_t tegra_fuse_priv_read(void *opaque, hwaddr offset,
     tegra_fuse *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case FUSE_FUSEBYPASS_OFFSET:
         ret = s->fuse_fusebypass.reg32;
@@ -430,8 +428,6 @@ static void tegra_fuse_priv_write(void *opaque, hwaddr offset,
                                   uint64_t value, unsigned size)
 {
     tegra_fuse *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case FUSE_FUSEBYPASS_OFFSET:

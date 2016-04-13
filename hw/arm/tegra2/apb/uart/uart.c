@@ -68,8 +68,6 @@ static uint64_t tegra_uart_priv_read(void *opaque, hwaddr offset,
     tegra_uart *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case THR_DLAB_OFFSET:
         ret = s->thr_dlab.reg32;
@@ -114,8 +112,6 @@ static void tegra_uart_priv_write(void *opaque, hwaddr offset,
                                   uint64_t value, unsigned size)
 {
     tegra_uart *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case THR_DLAB_OFFSET:

@@ -225,8 +225,6 @@ static uint64_t tegra_pmc_priv_read(void *opaque, hwaddr offset,
     tegra_pmc *s = opaque;
     uint64_t ret = 0;
 
-//     assert(size == 4);
-
     switch (offset) {
     case CNTRL_OFFSET:
         ret = s->cntrl.reg32;
@@ -505,8 +503,6 @@ static void tegra_pmc_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_pmc *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case CNTRL_OFFSET:

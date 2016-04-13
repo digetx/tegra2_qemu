@@ -74,8 +74,6 @@ static uint64_t tegra_cop_mmu_priv_read(void *opaque, hwaddr offset,
         return ret;
     }
 
-    assert(size == 4);
-
     switch (offset) {
     case PTE0_COMPARE:
         ret = (s->translate_virt_base << 16) | s->translate_mask;
@@ -103,8 +101,6 @@ static void tegra_cop_mmu_priv_write(void *opaque, hwaddr offset,
         TRACE_WRITE(s->iomem.addr, offset, 0, value);
         return;
     }
-
-    assert(size == 4);
 
     switch (offset) {
     case PTE0_COMPARE:

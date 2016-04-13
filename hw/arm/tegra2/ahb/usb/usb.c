@@ -51,8 +51,6 @@ static uint64_t tegra_usb_priv_read(void *opaque, hwaddr offset,
     tegra_usb *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset + 0x400) {
     case USB1_IF_USB_SUSP_CTRL_OFFSET:
         ret = s->usb1_if_usb_susp_ctrl.reg32;
@@ -71,8 +69,6 @@ static void tegra_usb_priv_write(void *opaque, hwaddr offset,
 {
     tegra_usb *s = opaque;
     usb1_if_usb_susp_ctrl_t old = s->usb1_if_usb_susp_ctrl;
-
-    assert(size == 4);
 
     switch (offset + 0x400) {
     case USB1_IF_USB_SUSP_CTRL_OFFSET:

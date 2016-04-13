@@ -99,8 +99,6 @@ static uint64_t tegra_gpio_priv_read(void *opaque, hwaddr offset,
     int port_nb = bank * PORTS_NB + port;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     p = &s->regs[port_nb];
 
     switch (offset & 0x870) {
@@ -168,8 +166,6 @@ static void tegra_gpio_priv_write(void *opaque, hwaddr offset,
     tegra_gpio_port *p;
     int bank = (offset >> 7) & 0x7;
     int port = (offset & 0xf) >> 2;
-
-    assert(size == 4);
 
     p = &s->regs[bank * PORTS_NB + port];
 

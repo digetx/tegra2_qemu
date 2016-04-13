@@ -62,8 +62,6 @@ static void tegra_host1x_priv_write(void *opaque, hwaddr offset,
 {
     tegra_host1x *s = opaque;
 
-    assert(size == 4);
-
     host1x_module_write(&s->host1x_module, offset >> 2, value);
 }
 

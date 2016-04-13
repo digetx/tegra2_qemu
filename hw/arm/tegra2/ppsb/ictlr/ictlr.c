@@ -173,8 +173,6 @@ static uint64_t tegra_ictlr_read(void *opaque, hwaddr offset, unsigned size)
     int bank = (offset >> 8);
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     if (bank >= 4)
         goto out;
 
@@ -224,8 +222,6 @@ static void tegra_ictlr_write(void *opaque, hwaddr offset,
 {
     tegra_ictlr *s = opaque;
     int bank = (offset >> 8);
-
-    assert(size == 4);
 
     if (bank >= 4) {
         TRACE_WRITE(s->iomem.addr + bank * 0x100, offset, 0, value);

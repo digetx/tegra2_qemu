@@ -231,8 +231,6 @@ static uint64_t tegra_apb_misc_priv_read(void *opaque, hwaddr offset,
     tegra_apb_misc *s = opaque;
     uint64_t ret = 0;
 
-//     assert(size == 4);
-
     switch (offset) {
     case PP_STRAPPING_OPT_A_OFFSET:
         ret = s->pp_strapping_opt_a.reg32;
@@ -520,8 +518,6 @@ static void tegra_apb_misc_priv_write(void *opaque, hwaddr offset,
                                       uint64_t value, unsigned size)
 {
     tegra_apb_misc *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case PP_STRAPPING_OPT_A_OFFSET:

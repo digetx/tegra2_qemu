@@ -99,8 +99,6 @@ static uint64_t tegra_res_sema_priv_read(void *opaque, hwaddr offset,
         return ret;
     }
 
-    assert(size == 4);
-
     switch (offset) {
     case RES_SEMA_SHRD_SMP_STA_OFFSET:
         ret = s->res_sema_shrd_smp_sta.reg32;
@@ -129,8 +127,6 @@ static void tegra_res_sema_priv_write(void *opaque, hwaddr offset,
     if (current_cpu == NULL) {
         return;
     }
-
-    assert(size == 4);
 
     cpu_id = current_cpu->cpu_index;
 

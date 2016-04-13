@@ -470,8 +470,6 @@ static uint64_t tegra_host1x_channel_priv_read(void *opaque, hwaddr offset,
     tegra_host1x_channel *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case FIFOSTAT_OFFSET:
         s->fifostat.outfentries = host1x_get_fifo_entries_nb(s->fifo);
@@ -537,8 +535,6 @@ static void tegra_host1x_channel_priv_write(void *opaque, hwaddr offset,
                                             uint64_t value, unsigned size)
 {
     tegra_host1x_channel *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case INDOFF_OFFSET:

@@ -47,8 +47,6 @@ static uint64_t tegra_timer_us_priv_read(void *opaque, hwaddr offset,
     tegra_timer_us *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case CNTR_1US_OFFSET:
         s->cntr_1us.reg32 = ~ptimer_get_count(s->ptimer);
@@ -75,8 +73,6 @@ static void tegra_timer_us_priv_write(void *opaque, hwaddr offset,
                                       uint64_t value, unsigned size)
 {
     tegra_timer_us *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case USEC_CFG_OFFSET:

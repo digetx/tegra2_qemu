@@ -357,8 +357,6 @@ static uint64_t tegra_emc_priv_read(void *opaque, hwaddr offset,
     tegra_emc *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case INTSTATUS_OFFSET:
         ret = s->intstatus.reg32;
@@ -835,8 +833,6 @@ static void tegra_emc_priv_write(void *opaque, hwaddr offset,
                                  uint64_t value, unsigned size)
 {
     tegra_emc *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case INTSTATUS_OFFSET:

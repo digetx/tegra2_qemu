@@ -91,8 +91,6 @@ static uint64_t tegra_bse_priv_read(void *opaque, hwaddr offset,
     uint64_t ret = 0;
     int i;
 
-    assert(size == 4);
-
     if (!clk_en) {
         goto out;
     }
@@ -329,8 +327,6 @@ static void tegra_bse_priv_write(void *opaque, hwaddr offset,
     int rst_set = tegra_rst_asserted(TEGRA20_CLK_BSEA);
     int clk_en = tegra_clk_enabled(TEGRA20_CLK_BSEA);
     int i;
-
-    assert(size == 4);
 
     if (!clk_en || rst_set) {
         TRACE_WRITE_EXT(s->iomem.addr, offset, value, value, !clk_en, rst_set);

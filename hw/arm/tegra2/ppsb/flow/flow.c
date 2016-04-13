@@ -249,8 +249,6 @@ static uint64_t tegra_flow_priv_read(void *opaque, hwaddr offset,
     tegra_flow *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case HALT_CPU0_EVENTS_OFFSET:
         ret = s->halt_events[TEGRA2_A9_CORE0].reg32;
@@ -577,8 +575,6 @@ static void tegra_flow_priv_write(void *opaque, hwaddr offset,
                                   uint64_t value, unsigned size)
 {
     tegra_flow *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case HALT_CPU0_EVENTS_OFFSET:

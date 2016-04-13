@@ -63,8 +63,6 @@ static uint64_t tegra_timer_priv_read(void *opaque, hwaddr offset,
     tegra_timer *s = opaque;
     uint64_t ret = 0;
 
-    assert(size == 4);
-
     switch (offset) {
     case PTV_OFFSET:
         ret = s->ptv.reg32;
@@ -88,8 +86,6 @@ static void tegra_timer_priv_write(void *opaque, hwaddr offset,
                                    uint64_t value, unsigned size)
 {
     tegra_timer *s = opaque;
-
-    assert(size == 4);
 
     switch (offset) {
     case PTV_OFFSET:
