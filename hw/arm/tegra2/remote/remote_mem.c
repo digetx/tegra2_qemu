@@ -131,7 +131,7 @@ static uint64_t remote_mem_read(void *opaque, hwaddr offset,
     uint32_t ret;
 
 #ifdef CACHED_READ
-    int on_avp = (current_cpu->cpu_index == TEGRA2_COP);
+    int on_avp = (current_cpu && current_cpu->cpu_index == TEGRA2_COP);
 
     if (!cache_miss(s, !on_avp, offset, size)) {
         ret = read_cache(s, !on_avp, offset, size);
@@ -156,7 +156,7 @@ static void remote_mem_write(void *opaque, hwaddr offset,
 {
     remote_mem *s = TEGRA_REMOTE_MEM(opaque);
 #ifdef CACHED_READ
-    int on_avp = (current_cpu->cpu_index == TEGRA2_COP);
+    int on_avp = (current_cpu && current_cpu->cpu_index == TEGRA2_COP);
 #endif
 
     TRACE_WRITE_MEM(s->iomem.addr, offset, value, size);
