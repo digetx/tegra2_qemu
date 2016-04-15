@@ -1,4 +1,5 @@
 QEMU_CFLAGS += -I$(SRC_PATH)/hw/arm/tegra2/include
+QEMU_CFLAGS += -DTEGRA_TRACE
 
 obj-y += axi/emc/emc.o
 obj-y += axi/mc/mc.o
