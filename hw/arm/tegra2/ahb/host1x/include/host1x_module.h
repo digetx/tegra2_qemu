@@ -20,8 +20,7 @@
 #ifndef HOST1X_MODULE_H
 #define HOST1X_MODULE_H
 
-#include <stdint.h>
-
+#include "qemu/osdep.h"
 #include "qemu/queue.h"
 #include "qemu/thread.h"
 

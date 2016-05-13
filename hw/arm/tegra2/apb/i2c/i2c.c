@@ -19,6 +19,7 @@
  * <http://www.gnu.org/licenses/gpl-2.0.html>
  */
 
+#include "qemu/osdep.h"
 #include "hw/sysbus.h"
 #include "hw/i2c/i2c.h"
 

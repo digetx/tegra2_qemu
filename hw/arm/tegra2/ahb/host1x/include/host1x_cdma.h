@@ -20,6 +20,7 @@
 #ifndef TEGRA_HOST1X_CDMA_H
 #define TEGRA_HOST1X_CDMA_H
 
+#include "qemu/osdep.h"
 #include "qemu/thread.h"
 #include "sysemu/dma.h"
 

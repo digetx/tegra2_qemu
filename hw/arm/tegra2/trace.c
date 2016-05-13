@@ -19,6 +19,9 @@
 
 #define LOCAL_SOCKET
 
+#include "qemu/osdep.h"
+#include "qapi/error.h"
+#include "qemu/error-report.h"
 #include <sysemu/sysemu.h>
 #include "hw/ptimer.h"
 #include "hw/sysbus.h"
@@ -79,6 +82,50 @@ struct __attribute__((packed, aligned(1))) trace_pkt_cdma {
 
 static int msgsock = -1;
 
+int tegra_send_all(int fd, const void *_buf, int len1)
+{
+    int ret, len;
+    const uint8_t *buf = _buf;
+
+    len = len1;
+    while (len > 0) {
+        ret = write(fd, buf, len);
+        if (ret < 0) {
+            if (errno != EINTR && errno != EAGAIN)
+                return -1;
+        } else if (ret == 0) {
+            break;
+        } else {
+            buf += ret;
+            len -= ret;
+        }
+    }
+    return len1 - len;
+}
+
+int tegra_recv_all(int fd, void *_buf, int len1, bool single_read)
+{
+    int ret, len;
+    uint8_t *buf = _buf;
+
+    len = len1;
+    while ((len > 0) && (ret = read(fd, buf, len)) != 0) {
+        if (ret < 0) {
+            if (errno != EINTR && errno != EAGAIN) {
+                return -1;
+            }
+            continue;
+        } else {
+            if (single_read) {
+                return ret;
+            }
+            buf += ret;
+            len -= ret;
+        }
+    }
+    return len1 - len;
+}
+
 void tegra_trace_text_message(const char* format, ...)
 {
 #ifdef _GNU_SOURCE
@@ -103,7 +150,7 @@ void tegra_trace_text_message(const char* format, ...)
     memcpy(W->text, txt, strlen(txt) + 1);
     free(txt);
 
-    if (send_all(msgsock, W, sz) < 0) {
+    if (tegra_send_all(msgsock, W, sz) < 0) {
         printf("%s", W->text);
     }
 
@@ -124,7 +171,7 @@ void tegra_trace_irq(uint32_t hwaddr, uint32_t hwirq, uint32_t status)
         htonl(0)
     };
 
-    send_all(msgsock, &W, sizeof(W));
+    tegra_send_all(msgsock, &W, sizeof(W));
 }
 
 void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
@@ -147,7 +194,7 @@ void tegra_trace_write(uint32_t hwaddr, uint32_t offset,
         htonl(cpu_id)
     };
 
-    send_all(msgsock, &W, sizeof(W));
+    tegra_send_all(msgsock, &W, sizeof(W));
 }
 
 void tegra_trace_cdma(uint32_t data, uint32_t is_gather, uint32_t ch_id)
@@ -161,7 +208,7 @@ void tegra_trace_cdma(uint32_t data, uint32_t is_gather, uint32_t ch_id)
         htonl(ch_id)
     };
 
-    send_all(msgsock, &W, sizeof(W));
+    tegra_send_all(msgsock, &W, sizeof(W));
 }
 
 #define CMD_CHANGE_TIMERS_FREQ      0x122
@@ -176,14 +223,14 @@ static void * trace_viewer_cmd_handler(void *arg)
     uint32_t cmd;
 
     for (;;) {
-        if (msgsock == -1 || recv_all(msgsock, &cmd, sizeof(cmd), 0) < sizeof(cmd)) {
+        if (msgsock == -1 || tegra_recv_all(msgsock, &cmd, sizeof(cmd), 0) < sizeof(cmd)) {
             sleep(1);
             continue;
         }
 
         switch (cmd) {
         case CMD_CHANGE_TIMERS_FREQ:
-            recv_all(msgsock, &freq, sizeof(freq), 0);
+            tegra_recv_all(msgsock, &freq, sizeof(freq), 0);
             /* Does't include ARM's MPtimer!  */
             ptimer_set_freq((*timer_us)->ptimer, freq);
             ptimer_set_freq((*timer3)->ptimer, freq);

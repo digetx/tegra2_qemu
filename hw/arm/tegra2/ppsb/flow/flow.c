@@ -17,6 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/osdep.h"
 #include "hw/arm/arm.h"
 #include "hw/cpu/a9mpcore.h"
 #include "hw/intc/gic_internal.h"

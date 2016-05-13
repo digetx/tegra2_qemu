@@ -22,6 +22,7 @@
 #ifndef TEGRA_HOST1X_CHANNELS_H
 #define TEGRA_HOST1X_CHANNELS_H
 
+#include "qemu/osdep.h"
 #include "hw/sysbus.h"
 
 #include "host1x_cdma.h"

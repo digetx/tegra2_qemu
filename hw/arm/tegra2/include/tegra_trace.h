@@ -83,6 +83,10 @@ static inline uint32_t ttrw(int rw, int c, int r, int s)
 #define TRACE_CDMA_STOP(c)                  do {(void)(c);} while (0)
 #endif //TEGRA_TRACE
 
+int tegra_send_all(int fd, const void *_buf, int len1);
+
+int tegra_recv_all(int fd, void *_buf, int len1, bool single_read);
+
 void tegra_trace_irq(uint32_t hwaddr, uint32_t hwirq, uint32_t status);
 
 void tegra_trace_write(uint32_t hwaddr, uint32_t offset,

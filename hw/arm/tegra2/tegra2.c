@@ -17,13 +17,15 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/osdep.h"
+#include "qapi/error.h"
+#include "qemu/error-report.h"
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
 #include "hw/sysbus.h"
 #include "hw/arm/arm.h"
 #include "hw/loader.h"
 #include "hw/char/serial.h"
-#include "qemu/error-report.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/char.h"
 
@@ -614,14 +616,19 @@ static QemuOptsList qemu_tegra_opts = {
     }
 };
 
+static void tegra2_register_config(void)
+{
+    qemu_add_opts(&qemu_tegra_opts);
+}
+
+opts_init(tegra2_register_config);
+
 static void tegra2_machine_init(MachineClass *mc)
 {
     mc->desc = "ARM NVIDIA Tegra2";
     mc->init = tegra2_init;
     mc->reset = tegra2_reset;
     mc->max_cpus = TEGRA2_NCPUS;
-
-    qemu_add_opts(&qemu_tegra_opts);
 }
 
 DEFINE_MACHINE("tegra2-alpha", tegra2_machine_init)

@@ -17,7 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdint.h>
+#include "qemu/osdep.h"
 
 #include "host1x_cdma.h"
 #include "host1x_cmd_processor.h"

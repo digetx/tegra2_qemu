@@ -17,9 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-#include <stdlib.h>
-
+#include "qemu/osdep.h"
 #include "qemu/thread.h"
 
 #include "host1x_fifo.h"

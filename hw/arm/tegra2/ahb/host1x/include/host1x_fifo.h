@@ -20,8 +20,6 @@
 #ifndef TEGRA_HOST1X_FIFO_H
 #define TEGRA_HOST1X_FIFO_H
 
-#include <stdint.h>
-
 struct host1x_fifo;
 
 void * host1x_fifo_create(unsigned int fifo_size);

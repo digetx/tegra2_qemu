@@ -17,9 +17,12 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/osdep.h"
 #include "qemu/sockets.h"
 #include "qemu/thread.h"
-#include "qemu-common.h"
+#include "qapi/error.h"
+#include "qemu/error-report.h"
+#include "hw/hw.h"
 
 #include "irqs.h"
 #include "remote_io.h"
@@ -135,7 +138,7 @@ static void * remote_io_recv_handler(void *arg)
     int magic;
 
     for (;;) {
-        if (recv_all(sock, buf, sizeof(buf), 0) < sizeof(buf)) {
+        if (tegra_recv_all(sock, buf, sizeof(buf), 0) < sizeof(buf)) {
             hw_error("%s failed\n", __func__);
         }
 
@@ -154,7 +157,7 @@ static void * remote_io_recv_handler(void *arg)
             remote_irq_handle(inotify);
             break;
         case REMOTE_IO_READ_MEM_RANGE_RESP:
-            if (recv_all(sock, read_range_data, read_range_size, 0) < read_range_size) {
+            if (tegra_recv_all(sock, read_range_data, read_range_size, 0) < read_range_size) {
                 hw_error("%s read_range_size failed\n", __func__);
             }
 
@@ -186,7 +189,7 @@ void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size)
     read_range_data = data;
     read_range_size = size;
 
-    if (send_all(sock, &req, sizeof(req)) < 0) {
+    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
         hw_error("%s failed\n", __func__);
     }
 
@@ -214,7 +217,7 @@ uint32_t remote_io_read(uint32_t addr, int size)
     qemu_mutex_lock(&io_mutex);
     qemu_event_reset(&read_ev);
 
-    if (send_all(sock, &req, sizeof(req)) < 0) {
+    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
         hw_error("%s failed\n", __func__);
     }
 
@@ -243,7 +246,7 @@ void remote_io_write(uint32_t value, uint32_t addr, int size)
         remote_io_read_cache_invalidate();
     }
 
-    if (send_all(sock, &req, sizeof(req)) < 0) {
+    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
         hw_error("%s failed\n", __func__);
     }
 }
@@ -262,7 +265,7 @@ void remote_io_watch_irq(uint32_t base_addr, qemu_irq *irq)
     remote_irqs[(*irq)->n].base_addr = base_addr;
     remote_irqs[(*irq)->n].irq = irq;
 
-    if (send_all(sock, &req, sizeof(req)) < 0) {
+    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
         hw_error("%s failed\n", __func__);
     }
 }

@@ -17,6 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/osdep.h"
 #include "hw/sysbus.h"
 
 #include "host1x_module.h"
@@ -56,4 +57,4 @@ static void register_gr3d_module(void)
     register_host1x_bus_module(&gr3d_module, NULL);
 }
 
-machine_init(register_gr3d_module);
+type_init(register_gr3d_module);

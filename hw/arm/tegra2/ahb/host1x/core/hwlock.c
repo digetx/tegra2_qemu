@@ -17,8 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <assert.h>
-#include <stdint.h>
+#include "qemu/osdep.h"
 
 #include "host1x_priv.h"
 #include "host1x_hwlock.h"

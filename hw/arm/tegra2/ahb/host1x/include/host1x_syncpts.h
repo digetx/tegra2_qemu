@@ -22,9 +22,10 @@
 #ifndef TEGRA_HOST1X_SYNCPTS_H
 #define TEGRA_HOST1X_SYNCPTS_H
 
-#include "hw/irq.h"
+#include "qemu/osdep.h"
 #include "qemu/queue.h"
 #include "qemu/thread.h"
+#include "hw/irq.h"
 
 #include "host1x_priv.h"
 

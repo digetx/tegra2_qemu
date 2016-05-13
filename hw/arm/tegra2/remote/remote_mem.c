@@ -19,6 +19,7 @@
 
 #define CACHED_READ
 
+#include "qemu/osdep.h"
 #include "hw/sysbus.h"
 
 #include "clk_rst.h"

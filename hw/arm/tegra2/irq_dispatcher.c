@@ -17,6 +17,7 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "qemu/osdep.h"
 #include "hw/cpu/a9mpcore.h"
 #include "hw/sysbus.h"
 #include "hw/irq.h"

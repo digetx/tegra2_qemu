@@ -19,6 +19,7 @@
 
 #include <pixman.h>
 
+#include "qemu/osdep.h"
 #include "sysemu/dma.h"
 #include "hw/sysbus.h"
 
