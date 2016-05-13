@@ -36,7 +36,7 @@ typedef union tegra_trace_rw_u {
         unsigned int clk_disabled:1;
         unsigned int in_reset:1;
         unsigned int size:3;
-        unsigned int __pad:28;
+        unsigned int __pad:26;
     };
 
     uint32_t val;
