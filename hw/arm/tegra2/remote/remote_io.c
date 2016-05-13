@@ -111,7 +111,7 @@ static QemuMutex io_mutex;
 static QemuEvent read_ev;
 static uint32_t read_val;
 static void *read_range_data;
-static uint32_t read_range_size;
+static uint32_t read_range_size = UINT32_MAX;
 
 static void remote_irq_handle(struct remote_io_irq_notify *inotify)
 {
@@ -176,9 +176,6 @@ void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size)
         .size = size,
     };
 
-    read_range_data = data;
-    read_range_size = size;
-
     if (sock == -1) {
         return;
     }
@@ -186,11 +183,17 @@ void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size)
     qemu_mutex_lock(&io_mutex);
     qemu_event_reset(&read_ev);
 
+    read_range_data = data;
+    read_range_size = size;
+
     if (send_all(sock, &req, sizeof(req)) < 0) {
         hw_error("%s failed\n", __func__);
     }
 
     qemu_event_wait(&read_ev);
+
+    read_range_size = UINT32_MAX;
+
     qemu_mutex_unlock(&io_mutex);
 }
 
