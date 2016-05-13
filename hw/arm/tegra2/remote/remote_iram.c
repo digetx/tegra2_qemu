@@ -47,10 +47,13 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
     remote_iram *s = TEGRA_REMOTE_IRAM(opaque);
     uint32_t ret;
 #ifdef LOCAL_ENABLED
-    uint16_t *local16 = (uint16_t *) (s->local + offset);
-    uint32_t *local32 = (uint32_t *) (s->local + offset);
+    uint16_t *local16 = (uint16_t *) (s->local + offset - LOCAL_START);
+    uint32_t *local32 = (uint32_t *) (s->local + offset - LOCAL_START);
 
-    if ((offset < LOCAL_START && (offset + size > LOCAL_START)) ||
+    if (
+#if LOCAL_START > 0
+        (offset < LOCAL_START && (offset + size > LOCAL_START)) ||
+#endif
         (offset < LOCAL_END && (offset + size > LOCAL_END)))
     {
         hw_error("Unaligned read not implemented");
@@ -62,7 +65,7 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
         case 1:
 //             printf("read%d offset 0x%08X value 0x%08X\n",
 //                    size, (uint32_t) offset, (uint32_t) s->local[offset]);
-            ret = s->local[offset];
+            ret = s->local[offset - LOCAL_START];
             break;
         case 2:
 //             printf("read%d offset 0x%08X value 0x%08X\n",
@@ -96,10 +99,13 @@ static void remote_iram_write(void *opaque, hwaddr offset,
 {
     remote_iram *s = TEGRA_REMOTE_IRAM(opaque);
 #ifdef LOCAL_ENABLED
-    uint16_t *local16 = (uint16_t *) (s->local + offset);
-    uint32_t *local32 = (uint32_t *) (s->local + offset);
+    uint16_t *local16 = (uint16_t *) (s->local + offset - LOCAL_START);
+    uint32_t *local32 = (uint32_t *) (s->local + offset - LOCAL_START);
 
-    if ((offset < LOCAL_START && (offset + size > LOCAL_START)) ||
+    if (
+#if LOCAL_START > 0
+        (offset < LOCAL_START && (offset + size > LOCAL_START)) ||
+#endif
         (offset < LOCAL_END && (offset + size > LOCAL_END)))
     {
         hw_error("Unaligned write not implemented");
@@ -112,7 +118,7 @@ static void remote_iram_write(void *opaque, hwaddr offset,
     case LOCAL_START ... LOCAL_END:
         switch (size) {
         case 1:
-            s->local[offset] = value;
+            s->local[offset - LOCAL_START] = value;
             return;
         case 2:
             *(local16) = value;
