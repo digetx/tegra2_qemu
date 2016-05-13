@@ -176,7 +176,10 @@ static void * trace_viewer_cmd_handler(void *arg)
     uint32_t cmd;
 
     for (;;) {
-        recv_all(msgsock, &cmd, sizeof(cmd), 0);
+        if (msgsock == -1 || recv_all(msgsock, &cmd, sizeof(cmd), 0) < sizeof(cmd)) {
+            sleep(1);
+            continue;
+        }
 
         switch (cmd) {
         case CMD_CHANGE_TIMERS_FREQ:
@@ -189,8 +192,6 @@ static void * trace_viewer_cmd_handler(void *arg)
         default:
             if (errno == 0) {
                 fprintf(stderr, "%s unknown cmd 0x%X\n", __func__, cmd);
-            } else {
-                sleep(1);
             }
         }
     }
