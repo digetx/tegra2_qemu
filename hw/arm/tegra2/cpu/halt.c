@@ -31,7 +31,7 @@
 // #undef TPRINT
 // #define TPRINT(...) {}
 
-static volatile int tcpu_halted[TEGRA2_NCPUS];
+static int tcpu_halted[TEGRA2_NCPUS];
 
 void tegra_cpu_hlt_clr(void)
 {

@@ -26,7 +26,7 @@
 #define HALT_CPU_EVENTS_RESET  0x00000000
 typedef union halt_events_u {
     struct {
-        volatile unsigned int zero:8;
+        unsigned int zero:8;
         unsigned int fiq_0:1;
         unsigned int fiq_1:1;
         unsigned int irq_0:1;
