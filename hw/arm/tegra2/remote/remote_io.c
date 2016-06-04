@@ -116,6 +116,28 @@ static uint32_t read_val;
 static void *read_range_data;
 static uint32_t read_range_size = UINT32_MAX;
 
+static void remote_io_connect(void)
+{
+    if (sock != -1) {
+        shutdown(sock, SHUT_RDWR);
+        close(sock);
+        sock = -1;
+    }
+
+    while (sock < 0) {
+        Error *err = NULL;
+
+        printf("remote_io: connecting to %s ...\n", remote_addr);
+
+        sock = inet_connect(remote_addr, &err);
+
+        if (sock < 0) {
+            error_report_err(err);
+            sleep(1);
+        }
+    }
+}
+
 static void remote_irq_handle(struct remote_io_irq_notify *inotify)
 {
     int i;
@@ -138,8 +160,15 @@ static void * remote_io_recv_handler(void *arg)
     int magic;
 
     for (;;) {
-        if (tegra_recv_all(sock, buf, sizeof(buf), 0) < sizeof(buf)) {
-            hw_error("%s failed\n", __func__);
+        magic = tegra_recv_all(sock, buf, sizeof(buf), 0);
+
+        if (magic < 1) {
+            sleep(1);
+            continue;
+        }
+
+        if (magic < sizeof(buf)) {
+            hw_error("%s failed ret %d\n", __func__, magic);
         }
 
         magic = buf[0];
@@ -178,6 +207,7 @@ void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size)
         .address = addr,
         .size = size,
     };
+    int ret;
 
     if (sock == -1) {
         return;
@@ -189,7 +219,15 @@ void remote_io_read_mem_range(uint8_t *data, uint32_t addr, uint32_t size)
     read_range_data = data;
     read_range_size = size;
 
-    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
+retry:
+    ret = tegra_send_all(sock, &req, sizeof(req));
+
+    if (ret < 1) {
+        remote_io_connect();
+        goto retry;
+    }
+
+    if (ret < sizeof(req)) {
         hw_error("%s failed\n", __func__);
     }
 
@@ -208,7 +246,7 @@ uint32_t remote_io_read(uint32_t addr, int size)
         .size = size,
         .on_avp = (current_cpu && current_cpu->cpu_index == TEGRA2_COP),
     };
-    uint32_t ret;
+    int64_t ret;
 
     if (sock == -1) {
         return 0;
@@ -217,7 +255,15 @@ uint32_t remote_io_read(uint32_t addr, int size)
     qemu_mutex_lock(&io_mutex);
     qemu_event_reset(&read_ev);
 
-    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
+retry:
+    ret = tegra_send_all(sock, &req, sizeof(req));
+
+    if (ret < 1) {
+        remote_io_connect();
+        goto retry;
+    }
+
+    if (ret < sizeof(req)) {
         hw_error("%s failed\n", __func__);
     }
 
@@ -237,6 +283,7 @@ void remote_io_write(uint32_t value, uint32_t addr, int size)
         .size = size,
         .on_avp = (current_cpu && current_cpu->cpu_index == TEGRA2_COP),
     };
+    int ret;
 
     if (sock == -1) {
         return;
@@ -246,7 +293,15 @@ void remote_io_write(uint32_t value, uint32_t addr, int size)
         remote_io_read_cache_invalidate();
     }
 
-    if (tegra_send_all(sock, &req, sizeof(req)) < 0) {
+retry:
+    ret = tegra_send_all(sock, &req, sizeof(req));
+
+    if (ret < 1) {
+        remote_io_connect();
+        goto retry;
+    }
+
+    if (ret < sizeof(req)) {
         hw_error("%s failed\n", __func__);
     }
 }
@@ -286,22 +341,6 @@ void remote_io_clk_set(uint8_t id, int enb)
     uint32_t val = 1 << (id & 0x1F);
 
     remote_io_write(val, addr, 32);
-}
-
-static void remote_io_connect(void)
-{
-    while (sock < 0) {
-        Error *err = NULL;
-
-        printf("remote_io: connecting to %s ...\n", remote_addr);
-
-        sock = inet_connect(remote_addr, &err);
-
-        if (sock < 0) {
-            error_report_err(err);
-            sleep(1);
-        }
-    }
 }
 
 void remote_io_init(const char *addr)
