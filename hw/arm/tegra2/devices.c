@@ -75,6 +75,7 @@ void *tegra_vdma_dev = NULL;
 void *tegra_ucq2_dev = NULL;
 void *tegra_bsea2_dev = NULL;
 void *tegra_frameid_dev = NULL;
+void *tegra_ahb_dma_dev = NULL;
 
 void tegra_a9mpcore_reset(void)
 {

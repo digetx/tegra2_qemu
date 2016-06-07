@@ -71,6 +71,7 @@ extern void * tegra_vdma_dev;
 extern void * tegra_ucq2_dev;
 extern void * tegra_bsea2_dev;
 extern void * tegra_frameid_dev;
+extern void *tegra_ahb_dma_dev;
 
 void tegra_a9mpcore_reset(void);
 void tegra_device_reset(void *dev_);

@@ -31,6 +31,7 @@ obj-y += ahb/bse/dummy768.o
 obj-y += ahb/bse/dummy2k.o
 obj-y += ahb/bse/dummy4k.o
 obj-y += ahb/bse/bse_remote.o
+obj-y += ahb/dma/ahb_dma.o
 obj-y += ahb/gizmo/gizmo.o
 obj-y += ahb/host1x/
 obj-y += ahb/usb/usb.o

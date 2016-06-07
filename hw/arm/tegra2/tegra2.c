@@ -324,6 +324,11 @@ static void tegra2_init(MachineState *machine)
     /* Memory controller */
     tegra_mc_dev = sysbus_create_simple("tegra.mc", TEGRA_MC_BASE, NULL);
 
+    /* AHB DMA controller */
+    tegra_ahb_dma_dev = sysbus_create_simple("tegra.ahb_dma",
+                                             TEGRA_AHB_DMA_BASE,
+                                             DIRQ(INT_AHB_DMA));
+
     /* AHB Gizmo controller */
     tegra_ahb_gizmo_dev = sysbus_create_simple("tegra.ahb_gizmo",
                                                TEGRA_AHB_GIZMO_BASE, NULL);
