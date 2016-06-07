@@ -118,6 +118,8 @@ static uint32_t read_range_size = UINT32_MAX;
 
 static void remote_io_connect(void)
 {
+    int i;
+
     if (sock != -1) {
         shutdown(sock, SHUT_RDWR);
         close(sock);
@@ -134,6 +136,13 @@ static void remote_io_connect(void)
         if (sock < 0) {
             error_report_err(err);
             sleep(1);
+        }
+    }
+
+    for (i = 0; i < INT_MAIN_NR; i++) {
+        if (remote_irqs[i].base_addr != 0) {
+            remote_io_watch_irq(remote_irqs[i].base_addr,
+                                remote_irqs[i].irq);
         }
     }
 }
