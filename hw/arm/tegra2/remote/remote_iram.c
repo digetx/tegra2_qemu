@@ -61,7 +61,7 @@ static uint64_t remote_iram_read(void *opaque, hwaddr offset,
     }
 
     switch (offset) {
-    case LOCAL_START ... LOCAL_END:
+    case LOCAL_START ... LOCAL_END - 1:
         switch (size) {
         case 1:
 //             printf("read%d offset 0x%08X value 0x%08X\n",
@@ -116,7 +116,7 @@ static void remote_iram_write(void *opaque, hwaddr offset,
 //            size, (uint32_t) offset, (uint32_t) value);
 
     switch (offset) {
-    case LOCAL_START ... LOCAL_END:
+    case LOCAL_START ... LOCAL_END - 1:
         switch (size) {
         case 1:
             s->local[offset - LOCAL_START] = value;
