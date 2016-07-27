@@ -93,7 +93,7 @@ NetworkAddressFamily inet_netfamily(int family)
  *   t     f       PF_INET
  *   t     t       PF_INET6
  *
- * NB, this matrix is only about getting the neccessary results
+ * NB, this matrix is only about getting the necessary results
  * from getaddrinfo(). Some of the cases require further work
  * after reading results from getaddrinfo in order to fully
  * apply the logic the end user wants. eg with the last case
@@ -997,6 +997,24 @@ int socket_listen(SocketAddress *addr, Error **errp)
     return fd;
 }
 
+void socket_listen_cleanup(int fd, Error **errp)
+{
+    SocketAddress *addr;
+
+    addr = socket_local_address(fd, errp);
+
+    if (addr->type == SOCKET_ADDRESS_KIND_UNIX
+        && addr->u.q_unix.data->path) {
+        if (unlink(addr->u.q_unix.data->path) < 0 && errno != ENOENT) {
+            error_setg_errno(errp, errno,
+                             "Failed to unlink socket %s",
+                             addr->u.q_unix.data->path);
+        }
+    }
+
+    qapi_free_SocketAddress(addr);
+}
+
 int socket_dgram(SocketAddress *remote, SocketAddress *local, Error **errp)
 {
     int fd;
@@ -1125,29 +1143,38 @@ SocketAddress *socket_remote_address(int fd, Error **errp)
     return socket_sockaddr_to_address(&ss, sslen, errp);
 }
 
-
-void qapi_copy_SocketAddress(SocketAddress **p_dest,
-                             SocketAddress *src)
+char *socket_address_to_string(struct SocketAddress *addr, Error **errp)
 {
-    QmpOutputVisitor *qov;
-    QmpInputVisitor *qiv;
-    Visitor *ov, *iv;
-    QObject *obj;
+    char *buf;
+    InetSocketAddress *inet;
+    char host_port[INET6_ADDRSTRLEN + 5 + 4];
 
-    *p_dest = NULL;
+    switch (addr->type) {
+    case SOCKET_ADDRESS_KIND_INET:
+        inet = addr->u.inet.data;
+        if (strchr(inet->host, ':') == NULL) {
+            snprintf(host_port, sizeof(host_port), "%s:%s", inet->host,
+                    inet->port);
+            buf = g_strdup(host_port);
+        } else {
+            snprintf(host_port, sizeof(host_port), "[%s]:%s", inet->host,
+                    inet->port);
+            buf = g_strdup(host_port);
+        }
+        break;
 
-    qov = qmp_output_visitor_new();
-    ov = qmp_output_get_visitor(qov);
-    visit_type_SocketAddress(ov, NULL, &src, &error_abort);
-    obj = qmp_output_get_qobject(qov);
-    qmp_output_visitor_cleanup(qov);
-    if (!obj) {
-        return;
+    case SOCKET_ADDRESS_KIND_UNIX:
+        buf = g_strdup(addr->u.q_unix.data->path);
+        break;
+
+    case SOCKET_ADDRESS_KIND_FD:
+        buf = g_strdup(addr->u.fd.data->str);
+        break;
+
+    default:
+        error_setg(errp, "socket family %d unsupported",
+                   addr->type);
+        return NULL;
     }
-
-    qiv = qmp_input_visitor_new(obj);
-    iv = qmp_input_get_visitor(qiv);
-    visit_type_SocketAddress(iv, NULL, p_dest, &error_abort);
-    qmp_input_visitor_cleanup(qiv);
-    qobject_decref(obj);
+    return buf;
 }

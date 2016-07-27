@@ -923,11 +923,10 @@ static void create_cpu_without_cps(const char *cpu_model,
             fprintf(stderr, "Unable to find CPU definition\n");
             exit(1);
         }
-        env = &cpu->env;
 
         /* Init internal devices */
-        cpu_mips_irq_init_cpu(env);
-        cpu_mips_clock_init(env);
+        cpu_mips_irq_init_cpu(cpu);
+        cpu_mips_clock_init(cpu);
         qemu_register_reset(main_cpu_reset, cpu);
     }
 
@@ -956,9 +955,7 @@ static void create_cps(MaltaState *s, const char *cpu_model,
 
     sysbus_mmio_map_overlap(SYS_BUS_DEVICE(s->cps), 0, 0, 1);
 
-    /* FIXME: When GIC is present then we should use GIC's IRQ 3.
-       Until then CPS exposes CPU's IRQs thus use the default IRQ 2. */
-    *i8259_irq = get_cps_irq(s->cps, 2);
+    *i8259_irq = get_cps_irq(s->cps, 3);
     *cbus_irq = NULL;
 }
 

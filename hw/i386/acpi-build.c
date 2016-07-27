@@ -23,7 +23,6 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "acpi-build.h"
-#include <glib.h>
 #include "qemu-common.h"
 #include "qemu/bitmap.h"
 #include "qemu/error-report.h"
@@ -34,6 +33,7 @@
 #include "hw/timer/hpet.h"
 #include "hw/acpi/acpi-defs.h"
 #include "hw/acpi/acpi.h"
+#include "hw/acpi/cpu.h"
 #include "hw/nvram/fw_cfg.h"
 #include "hw/acpi/bios-linker-loader.h"
 #include "hw/loader.h"
@@ -44,6 +44,7 @@
 #include "hw/acpi/tpm.h"
 #include "sysemu/tpm_backend.h"
 #include "hw/timer/mc146818rtc_regs.h"
+#include "sysemu/numa.h"
 
 /* Supported chipsets: */
 #include "hw/acpi/piix4.h"
@@ -51,13 +52,16 @@
 #include "hw/i386/ich9.h"
 #include "hw/pci/pci_bus.h"
 #include "hw/pci-host/q35.h"
-#include "hw/i386/intel_iommu.h"
+#include "hw/i386/x86-iommu.h"
 #include "hw/timer/hpet.h"
 
 #include "hw/acpi/aml-build.h"
 
 #include "qapi/qmp/qint.h"
 #include "qom/qom-qobject.h"
+#include "hw/i386/x86-iommu.h"
+
+#include "hw/acpi/ipmi.h"
 
 /* These are used to size the ACPI tables for -M pc-i440fx-1.7 and
  * -M pc-i440fx-2.0.  Even if the actual amount of AML generated grows
@@ -77,6 +81,9 @@
 #define ACPI_BUILD_DPRINTF(fmt, ...)
 #endif
 
+/* Default IOAPIC ID */
+#define ACPI_BUILD_IOAPIC_ID 0x0
+
 typedef struct AcpiMcfgInfo {
     uint64_t mcfg_base;
     uint32_t mcfg_size;
@@ -94,7 +101,6 @@ typedef struct AcpiPmInfo {
     uint32_t gpe0_blk_len;
     uint32_t io_base;
     uint16_t cpu_hp_io_base;
-    uint16_t cpu_hp_io_len;
     uint16_t mem_hp_io_base;
     uint16_t mem_hp_io_len;
     uint16_t pcihp_io_base;
@@ -142,7 +148,6 @@ static void acpi_get_pm_info(AcpiPmInfo *pm)
     }
     assert(obj);
 
-    pm->cpu_hp_io_len = ACPI_GPE_PROC_LEN;
     pm->mem_hp_io_base = ACPI_MEMORY_HOTPLUG_BASE;
     pm->mem_hp_io_len = ACPI_MEMORY_HOTPLUG_IO_LEN;
 
@@ -228,26 +233,27 @@ static Object *acpi_get_i386_pci_host(void)
     return OBJECT(host);
 }
 
-static void acpi_get_pci_info(PcPciInfo *info)
+static void acpi_get_pci_holes(Range *hole, Range *hole64)
 {
     Object *pci_host;
-
 
     pci_host = acpi_get_i386_pci_host();
     g_assert(pci_host);
 
-    info->w32.begin = object_property_get_int(pci_host,
+    range_set_bounds1(hole,
+                      object_property_get_int(pci_host,
                                               PCI_HOST_PROP_PCI_HOLE_START,
-                                              NULL);
-    info->w32.end = object_property_get_int(pci_host,
-                                            PCI_HOST_PROP_PCI_HOLE_END,
-                                            NULL);
-    info->w64.begin = object_property_get_int(pci_host,
+                                              NULL),
+                      object_property_get_int(pci_host,
+                                              PCI_HOST_PROP_PCI_HOLE_END,
+                                              NULL));
+    range_set_bounds1(hole64,
+                      object_property_get_int(pci_host,
                                               PCI_HOST_PROP_PCI_HOLE64_START,
-                                              NULL);
-    info->w64.end = object_property_get_int(pci_host,
-                                            PCI_HOST_PROP_PCI_HOLE64_END,
-                                            NULL);
+                                              NULL),
+                      object_property_get_int(pci_host,
+                                              PCI_HOST_PROP_PCI_HOLE64_END,
+                                              NULL));
 }
 
 #define ACPI_PORT_SMI_CMD           0x00b2 /* TODO: this is APM_CNT_IOPORT */
@@ -262,7 +268,7 @@ static void acpi_align_size(GArray *blob, unsigned align)
 
 /* FACS */
 static void
-build_facs(GArray *table_data, GArray *linker)
+build_facs(GArray *table_data, BIOSLinker *linker)
 {
     AcpiFacsDescriptorRev1 *facs = acpi_data_push(table_data, sizeof *facs);
     memcpy(&facs->signature, "FACS", 4);
@@ -307,38 +313,61 @@ static void fadt_setup(AcpiFadtDescriptorRev1 *fadt, AcpiPmInfo *pm)
 
 /* FADT */
 static void
-build_fadt(GArray *table_data, GArray *linker, AcpiPmInfo *pm,
-           unsigned facs, unsigned dsdt,
+build_fadt(GArray *table_data, BIOSLinker *linker, AcpiPmInfo *pm,
+           unsigned facs_tbl_offset, unsigned dsdt_tbl_offset,
            const char *oem_id, const char *oem_table_id)
 {
     AcpiFadtDescriptorRev1 *fadt = acpi_data_push(table_data, sizeof(*fadt));
+    unsigned fw_ctrl_offset = (char *)&fadt->firmware_ctrl - table_data->data;
+    unsigned dsdt_entry_offset = (char *)&fadt->dsdt - table_data->data;
 
-    fadt->firmware_ctrl = cpu_to_le32(facs);
     /* FACS address to be filled by Guest linker */
-    bios_linker_loader_add_pointer(linker, ACPI_BUILD_TABLE_FILE,
-                                   ACPI_BUILD_TABLE_FILE,
-                                   table_data, &fadt->firmware_ctrl,
-                                   sizeof fadt->firmware_ctrl);
+    bios_linker_loader_add_pointer(linker,
+        ACPI_BUILD_TABLE_FILE, fw_ctrl_offset, sizeof(fadt->firmware_ctrl),
+        ACPI_BUILD_TABLE_FILE, facs_tbl_offset);
 
-    fadt->dsdt = cpu_to_le32(dsdt);
     /* DSDT address to be filled by Guest linker */
-    bios_linker_loader_add_pointer(linker, ACPI_BUILD_TABLE_FILE,
-                                   ACPI_BUILD_TABLE_FILE,
-                                   table_data, &fadt->dsdt,
-                                   sizeof fadt->dsdt);
-
     fadt_setup(fadt, pm);
+    bios_linker_loader_add_pointer(linker,
+        ACPI_BUILD_TABLE_FILE, dsdt_entry_offset, sizeof(fadt->dsdt),
+        ACPI_BUILD_TABLE_FILE, dsdt_tbl_offset);
 
     build_header(linker, table_data,
                  (void *)fadt, "FACP", sizeof(*fadt), 1, oem_id, oem_table_id);
 }
 
+void pc_madt_cpu_entry(AcpiDeviceIf *adev, int uid,
+                       CPUArchIdList *apic_ids, GArray *entry)
+{
+    int apic_id;
+    AcpiMadtProcessorApic *apic = acpi_data_push(entry, sizeof *apic);
+
+    apic_id = apic_ids->cpus[uid].arch_id;
+    apic->type = ACPI_APIC_PROCESSOR;
+    apic->length = sizeof(*apic);
+    apic->processor_id = uid;
+    apic->local_apic_id = apic_id;
+    if (apic_ids->cpus[uid].cpu != NULL) {
+        apic->flags = cpu_to_le32(1);
+    } else {
+        /* ACPI spec says that LAPIC entry for non present
+         * CPU may be omitted from MADT or it must be marked
+         * as disabled. However omitting non present CPU from
+         * MADT breaks hotplug on linux. So possible CPUs
+         * should be put in MADT but kept disabled.
+         */
+        apic->flags = cpu_to_le32(0);
+    }
+}
+
 static void
-build_madt(GArray *table_data, GArray *linker, PCMachineState *pcms)
+build_madt(GArray *table_data, BIOSLinker *linker, PCMachineState *pcms)
 {
     MachineClass *mc = MACHINE_GET_CLASS(pcms);
     CPUArchIdList *apic_ids = mc->possible_cpu_arch_ids(MACHINE(pcms));
     int madt_start = table_data->len;
+    AcpiDeviceIfClass *adevc = ACPI_DEVICE_IF_GET_CLASS(pcms->acpi_dev);
+    AcpiDeviceIf *adev = ACPI_DEVICE_IF(pcms->acpi_dev);
 
     AcpiMultipleApicTable *madt;
     AcpiMadtIoApic *io_apic;
@@ -351,31 +380,13 @@ build_madt(GArray *table_data, GArray *linker, PCMachineState *pcms)
     madt->flags = cpu_to_le32(1);
 
     for (i = 0; i < apic_ids->len; i++) {
-        AcpiMadtProcessorApic *apic = acpi_data_push(table_data, sizeof *apic);
-        int apic_id = apic_ids->cpus[i].arch_id;
-
-        apic->type = ACPI_APIC_PROCESSOR;
-        apic->length = sizeof(*apic);
-        apic->processor_id = apic_id;
-        apic->local_apic_id = apic_id;
-        if (apic_ids->cpus[i].cpu != NULL) {
-            apic->flags = cpu_to_le32(1);
-        } else {
-            /* ACPI spec says that LAPIC entry for non present
-             * CPU may be omitted from MADT or it must be marked
-             * as disabled. However omitting non present CPU from
-             * MADT breaks hotplug on linux. So possible CPUs
-             * should be put in MADT but kept disabled.
-             */
-            apic->flags = cpu_to_le32(0);
-        }
+        adevc->madt_cpu(adev, i, apic_ids, table_data);
     }
     g_free(apic_ids);
 
     io_apic = acpi_data_push(table_data, sizeof *io_apic);
     io_apic->type = ACPI_APIC_IO;
     io_apic->length = sizeof(*io_apic);
-#define ACPI_BUILD_IOAPIC_ID 0x0
     io_apic->io_apic_id = ACPI_BUILD_IOAPIC_ID;
     io_apic->address = cpu_to_le32(IO_APIC_DEFAULT_ADDRESS);
     io_apic->interrupt = cpu_to_le32(0);
@@ -943,114 +954,6 @@ static Aml *build_crs(PCIHostState *host,
     return crs;
 }
 
-static void build_processor_devices(Aml *sb_scope, MachineState *machine,
-                                    AcpiPmInfo *pm)
-{
-    int i, apic_idx;
-    Aml *dev;
-    Aml *crs;
-    Aml *pkg;
-    Aml *field;
-    Aml *ifctx;
-    Aml *method;
-    MachineClass *mc = MACHINE_GET_CLASS(machine);
-    CPUArchIdList *apic_ids = mc->possible_cpu_arch_ids(machine);
-    PCMachineState *pcms = PC_MACHINE(machine);
-
-    /* The current AML generator can cover the APIC ID range [0..255],
-     * inclusive, for VCPU hotplug. */
-    QEMU_BUILD_BUG_ON(ACPI_CPU_HOTPLUG_ID_LIMIT > 256);
-    g_assert(pcms->apic_id_limit <= ACPI_CPU_HOTPLUG_ID_LIMIT);
-
-    /* create PCI0.PRES device and its _CRS to reserve CPU hotplug MMIO */
-    dev = aml_device("PCI0." stringify(CPU_HOTPLUG_RESOURCE_DEVICE));
-    aml_append(dev, aml_name_decl("_HID", aml_eisaid("PNP0A06")));
-    aml_append(dev,
-        aml_name_decl("_UID", aml_string("CPU Hotplug resources"))
-    );
-    /* device present, functioning, decoding, not shown in UI */
-    aml_append(dev, aml_name_decl("_STA", aml_int(0xB)));
-    crs = aml_resource_template();
-    aml_append(crs,
-        aml_io(AML_DECODE16, pm->cpu_hp_io_base, pm->cpu_hp_io_base, 1,
-               pm->cpu_hp_io_len)
-    );
-    aml_append(dev, aml_name_decl("_CRS", crs));
-    aml_append(sb_scope, dev);
-    /* declare CPU hotplug MMIO region and PRS field to access it */
-    aml_append(sb_scope, aml_operation_region(
-        "PRST", AML_SYSTEM_IO, aml_int(pm->cpu_hp_io_base), pm->cpu_hp_io_len));
-    field = aml_field("PRST", AML_BYTE_ACC, AML_NOLOCK, AML_PRESERVE);
-    aml_append(field, aml_named_field("PRS", 256));
-    aml_append(sb_scope, field);
-
-    /* build Processor object for each processor */
-    for (i = 0; i < apic_ids->len; i++) {
-        int apic_id = apic_ids->cpus[i].arch_id;
-
-        assert(apic_id < ACPI_CPU_HOTPLUG_ID_LIMIT);
-
-        dev = aml_processor(apic_id, 0, 0, "CP%.02X", apic_id);
-
-        method = aml_method("_MAT", 0, AML_NOTSERIALIZED);
-        aml_append(method,
-            aml_return(aml_call1(CPU_MAT_METHOD, aml_int(apic_id))));
-        aml_append(dev, method);
-
-        method = aml_method("_STA", 0, AML_NOTSERIALIZED);
-        aml_append(method,
-            aml_return(aml_call1(CPU_STATUS_METHOD, aml_int(apic_id))));
-        aml_append(dev, method);
-
-        method = aml_method("_EJ0", 1, AML_NOTSERIALIZED);
-        aml_append(method,
-            aml_return(aml_call2(CPU_EJECT_METHOD, aml_int(apic_id),
-                aml_arg(0)))
-        );
-        aml_append(dev, method);
-
-        aml_append(sb_scope, dev);
-    }
-
-    /* build this code:
-     *   Method(NTFY, 2) {If (LEqual(Arg0, 0x00)) {Notify(CP00, Arg1)} ...}
-     */
-    /* Arg0 = Processor ID = APIC ID */
-    method = aml_method(AML_NOTIFY_METHOD, 2, AML_NOTSERIALIZED);
-    for (i = 0; i < apic_ids->len; i++) {
-        int apic_id = apic_ids->cpus[i].arch_id;
-
-        ifctx = aml_if(aml_equal(aml_arg(0), aml_int(apic_id)));
-        aml_append(ifctx,
-            aml_notify(aml_name("CP%.02X", apic_id), aml_arg(1))
-        );
-        aml_append(method, ifctx);
-    }
-    aml_append(sb_scope, method);
-
-    /* build "Name(CPON, Package() { One, One, ..., Zero, Zero, ... })"
-     *
-     * Note: The ability to create variable-sized packages was first
-     * introduced in ACPI 2.0. ACPI 1.0 only allowed fixed-size packages
-     * ith up to 255 elements. Windows guests up to win2k8 fail when
-     * VarPackageOp is used.
-     */
-    pkg = pcms->apic_id_limit <= 255 ? aml_package(pcms->apic_id_limit) :
-                                       aml_varpackage(pcms->apic_id_limit);
-
-    for (i = 0, apic_idx = 0; i < apic_ids->len; i++) {
-        int apic_id = apic_ids->cpus[i].arch_id;
-
-        for (; apic_idx < apic_id; apic_idx++) {
-            aml_append(pkg, aml_int(0));
-        }
-        aml_append(pkg, aml_int(apic_ids->cpus[i].cpu ? 1 : 0));
-        apic_idx = apic_id + 1;
-    }
-    aml_append(sb_scope, aml_name_decl(CPU_ON_BITMAP, pkg));
-    g_free(apic_ids);
-}
-
 static void build_memory_devices(Aml *sb_scope, int nr_mem,
                                  uint16_t io_base, uint16_t io_len)
 {
@@ -1448,8 +1351,10 @@ static Aml *build_com_device_aml(uint8_t uid)
 static void build_isa_devices_aml(Aml *table)
 {
     ISADevice *fdc = pc_find_fdc0();
+    bool ambiguous;
 
     Aml *scope = aml_scope("_SB.PCI0.ISA");
+    Object *obj = object_resolve_path_type("", TYPE_ISA_BUS, &ambiguous);
 
     aml_append(scope, build_rtc_device_aml());
     aml_append(scope, build_kbd_device_aml());
@@ -1460,6 +1365,14 @@ static void build_isa_devices_aml(Aml *table)
     aml_append(scope, build_lpt_device_aml());
     aml_append(scope, build_com_device_aml(1));
     aml_append(scope, build_com_device_aml(2));
+
+    if (ambiguous) {
+        error_report("Multiple ISA busses, unable to define IPMI ACPI data");
+    } else if (!obj) {
+        error_report("No ISA bus, unable to define IPMI ACPI data");
+    } else {
+        build_acpi_ipmi_devices(scope, BUS(obj));
+    }
 
     aml_append(table, scope);
 }
@@ -1979,15 +1892,16 @@ static Aml *build_q35_osc_method(void)
 }
 
 static void
-build_dsdt(GArray *table_data, GArray *linker,
+build_dsdt(GArray *table_data, BIOSLinker *linker,
            AcpiPmInfo *pm, AcpiMiscInfo *misc,
-           PcPciInfo *pci, MachineState *machine)
+           Range *pci_hole, Range *pci_hole64, MachineState *machine)
 {
     CrsRangeEntry *entry;
     Aml *dsdt, *sb_scope, *scope, *dev, *method, *field, *pkg, *crs;
     GPtrArray *mem_ranges = g_ptr_array_new_with_free_func(crs_range_free);
     GPtrArray *io_ranges = g_ptr_array_new_with_free_func(crs_range_free);
     PCMachineState *pcms = PC_MACHINE(machine);
+    PCMachineClass *pcmc = PC_MACHINE_GET_CLASS(machine);
     uint32_t nr_mem = machine->ram_slots;
     int root_bus_limit = 0xFF;
     PCIBus *bus = NULL;
@@ -2043,15 +1957,21 @@ build_dsdt(GArray *table_data, GArray *linker,
         build_q35_pci0_int(dsdt);
     }
 
-    build_cpu_hotplug_aml(dsdt);
+    if (pcmc->legacy_cpu_hotplug) {
+        build_legacy_cpu_hotplug_aml(dsdt, machine, pm->cpu_hp_io_base);
+    } else {
+        CPUHotplugFeatures opts = {
+            .apci_1_compatible = true, .has_legacy_cphp = true
+        };
+        build_cpus_aml(dsdt, machine, opts, pm->cpu_hp_io_base,
+                       "\\_SB.PCI0", "\\_GPE._E02");
+    }
     build_memory_hotplug_aml(dsdt, nr_mem, pm->mem_hp_io_base,
                              pm->mem_hp_io_len);
 
     scope =  aml_scope("_GPE");
     {
         aml_append(scope, aml_name_decl("_HID", aml_string("ACPI0006")));
-
-        aml_append(scope, aml_method("_L00", 0, AML_NOTSERIALIZED));
 
         if (misc->is_piix4) {
             method = aml_method("_E01", 0, AML_NOTSERIALIZED);
@@ -2060,30 +1980,11 @@ build_dsdt(GArray *table_data, GArray *linker,
             aml_append(method, aml_call0("\\_SB.PCI0.PCNT"));
             aml_append(method, aml_release(aml_name("\\_SB.PCI0.BLCK")));
             aml_append(scope, method);
-        } else {
-            aml_append(scope, aml_method("_L01", 0, AML_NOTSERIALIZED));
         }
-
-        method = aml_method("_E02", 0, AML_NOTSERIALIZED);
-        aml_append(method, aml_call0("\\_SB." CPU_SCAN_METHOD));
-        aml_append(scope, method);
 
         method = aml_method("_E03", 0, AML_NOTSERIALIZED);
         aml_append(method, aml_call0(MEMORY_HOTPLUG_HANDLER_PATH));
         aml_append(scope, method);
-
-        aml_append(scope, aml_method("_L04", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L05", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L06", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L07", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L08", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L09", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L0A", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L0B", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L0C", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L0D", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L0E", 0, AML_NOTSERIALIZED));
-        aml_append(scope, aml_method("_L0F", 0, AML_NOTSERIALIZED));
     }
     aml_append(dsdt, scope);
 
@@ -2150,7 +2051,9 @@ build_dsdt(GArray *table_data, GArray *linker,
                          AML_CACHEABLE, AML_READ_WRITE,
                          0, 0x000A0000, 0x000BFFFF, 0, 0x00020000));
 
-    crs_replace_with_free_ranges(mem_ranges, pci->w32.begin, pci->w32.end - 1);
+    crs_replace_with_free_ranges(mem_ranges,
+                                 range_lob(pci_hole),
+                                 range_upb(pci_hole));
     for (i = 0; i < mem_ranges->len; i++) {
         entry = g_ptr_array_index(mem_ranges, i);
         aml_append(crs,
@@ -2160,12 +2063,12 @@ build_dsdt(GArray *table_data, GArray *linker,
                              0, entry->limit - entry->base + 1));
     }
 
-    if (pci->w64.begin) {
+    if (!range_is_empty(pci_hole64)) {
         aml_append(crs,
             aml_qword_memory(AML_POS_DECODE, AML_MIN_FIXED, AML_MAX_FIXED,
                              AML_CACHEABLE, AML_READ_WRITE,
-                             0, pci->w64.begin, pci->w64.end - 1, 0,
-                             pci->w64.end - pci->w64.begin));
+                             0, range_lob(pci_hole64), range_upb(pci_hole64), 0,
+                             range_upb(pci_hole64) + 1 - range_lob(pci_hole64)));
     }
 
     if (misc->tpm_version != TPM_VERSION_UNSPEC) {
@@ -2322,8 +2225,6 @@ build_dsdt(GArray *table_data, GArray *linker,
 
     sb_scope = aml_scope("\\_SB");
     {
-        build_processor_devices(sb_scope, machine, pm);
-
         build_memory_devices(sb_scope, nr_mem, pm->mem_hp_io_base,
                              pm->mem_hp_io_len);
 
@@ -2373,7 +2274,7 @@ build_dsdt(GArray *table_data, GArray *linker,
 }
 
 static void
-build_hpet(GArray *table_data, GArray *linker)
+build_hpet(GArray *table_data, BIOSLinker *linker)
 {
     Acpi20Hpet *hpet;
 
@@ -2388,32 +2289,31 @@ build_hpet(GArray *table_data, GArray *linker)
 }
 
 static void
-build_tpm_tcpa(GArray *table_data, GArray *linker, GArray *tcpalog)
+build_tpm_tcpa(GArray *table_data, BIOSLinker *linker, GArray *tcpalog)
 {
     Acpi20Tcpa *tcpa = acpi_data_push(table_data, sizeof *tcpa);
-    uint64_t log_area_start_address = acpi_data_len(tcpalog);
+    unsigned log_addr_size = sizeof(tcpa->log_area_start_address);
+    unsigned log_addr_offset =
+        (char *)&tcpa->log_area_start_address - table_data->data;
 
     tcpa->platform_class = cpu_to_le16(TPM_TCPA_ACPI_CLASS_CLIENT);
     tcpa->log_area_minimum_length = cpu_to_le32(TPM_LOG_AREA_MINIMUM_SIZE);
-    tcpa->log_area_start_address = cpu_to_le64(log_area_start_address);
+    acpi_data_push(tcpalog, le32_to_cpu(tcpa->log_area_minimum_length));
 
-    bios_linker_loader_alloc(linker, ACPI_BUILD_TPMLOG_FILE, 1,
+    bios_linker_loader_alloc(linker, ACPI_BUILD_TPMLOG_FILE, tcpalog, 1,
                              false /* high memory */);
 
     /* log area start address to be filled by Guest linker */
-    bios_linker_loader_add_pointer(linker, ACPI_BUILD_TABLE_FILE,
-                                   ACPI_BUILD_TPMLOG_FILE,
-                                   table_data, &tcpa->log_area_start_address,
-                                   sizeof(tcpa->log_area_start_address));
+    bios_linker_loader_add_pointer(linker,
+        ACPI_BUILD_TABLE_FILE, log_addr_offset, log_addr_size,
+        ACPI_BUILD_TPMLOG_FILE, 0);
 
     build_header(linker, table_data,
                  (void *)tcpa, "TCPA", sizeof(*tcpa), 2, NULL, NULL);
-
-    acpi_data_push(tcpalog, TPM_LOG_AREA_MINIMUM_SIZE);
 }
 
 static void
-build_tpm2(GArray *table_data, GArray *linker)
+build_tpm2(GArray *table_data, BIOSLinker *linker)
 {
     Acpi20TPM2 *tpm2_ptr;
 
@@ -2427,35 +2327,14 @@ build_tpm2(GArray *table_data, GArray *linker)
                  (void *)tpm2_ptr, "TPM2", sizeof(*tpm2_ptr), 4, NULL, NULL);
 }
 
-typedef enum {
-    MEM_AFFINITY_NOFLAGS      = 0,
-    MEM_AFFINITY_ENABLED      = (1 << 0),
-    MEM_AFFINITY_HOTPLUGGABLE = (1 << 1),
-    MEM_AFFINITY_NON_VOLATILE = (1 << 2),
-} MemoryAffinityFlags;
-
 static void
-acpi_build_srat_memory(AcpiSratMemoryAffinity *numamem, uint64_t base,
-                       uint64_t len, int node, MemoryAffinityFlags flags)
-{
-    numamem->type = ACPI_SRAT_MEMORY;
-    numamem->length = sizeof(*numamem);
-    memset(numamem->proximity, 0, 4);
-    numamem->proximity[0] = node;
-    numamem->flags = cpu_to_le32(flags);
-    numamem->base_addr = cpu_to_le64(base);
-    numamem->range_length = cpu_to_le64(len);
-}
-
-static void
-build_srat(GArray *table_data, GArray *linker, MachineState *machine)
+build_srat(GArray *table_data, BIOSLinker *linker, MachineState *machine)
 {
     AcpiSystemResourceAffinityTable *srat;
     AcpiSratProcessorAffinity *core;
     AcpiSratMemoryAffinity *numamem;
 
     int i;
-    uint64_t curnode;
     int srat_start, numa_start, slots;
     uint64_t mem_len, mem_base, next_base;
     MachineClass *mc = MACHINE_GET_CLASS(machine);
@@ -2471,14 +2350,19 @@ build_srat(GArray *table_data, GArray *linker, MachineState *machine)
     srat->reserved1 = cpu_to_le32(1);
 
     for (i = 0; i < apic_ids->len; i++) {
+        int j;
         int apic_id = apic_ids->cpus[i].arch_id;
 
         core = acpi_data_push(table_data, sizeof *core);
-        core->type = ACPI_SRAT_PROCESSOR;
+        core->type = ACPI_SRAT_PROCESSOR_APIC;
         core->length = sizeof(*core);
         core->local_apic_id = apic_id;
-        curnode = pcms->node_cpu[apic_id];
-        core->proximity_lo = curnode;
+        for (j = 0; j < nb_numa_nodes; j++) {
+            if (test_bit(i, numa_info[j].node_cpu)) {
+                core->proximity_lo = j;
+                break;
+            }
+        }
         memset(core->proximity_hi, 0, 3);
         core->local_sapic_eid = 0;
         core->flags = cpu_to_le32(1);
@@ -2492,7 +2376,7 @@ build_srat(GArray *table_data, GArray *linker, MachineState *machine)
     numa_start = table_data->len;
 
     numamem = acpi_data_push(table_data, sizeof *numamem);
-    acpi_build_srat_memory(numamem, 0, 640*1024, 0, MEM_AFFINITY_ENABLED);
+    build_srat_memory(numamem, 0, 640 * 1024, 0, MEM_AFFINITY_ENABLED);
     next_base = 1024 * 1024;
     for (i = 1; i < pcms->numa_nodes + 1; ++i) {
         mem_base = next_base;
@@ -2508,21 +2392,21 @@ build_srat(GArray *table_data, GArray *linker, MachineState *machine)
             mem_len -= next_base - pcms->below_4g_mem_size;
             if (mem_len > 0) {
                 numamem = acpi_data_push(table_data, sizeof *numamem);
-                acpi_build_srat_memory(numamem, mem_base, mem_len, i - 1,
-                                       MEM_AFFINITY_ENABLED);
+                build_srat_memory(numamem, mem_base, mem_len, i - 1,
+                                  MEM_AFFINITY_ENABLED);
             }
             mem_base = 1ULL << 32;
             mem_len = next_base - pcms->below_4g_mem_size;
             next_base += (1ULL << 32) - pcms->below_4g_mem_size;
         }
         numamem = acpi_data_push(table_data, sizeof *numamem);
-        acpi_build_srat_memory(numamem, mem_base, mem_len, i - 1,
-                               MEM_AFFINITY_ENABLED);
+        build_srat_memory(numamem, mem_base, mem_len, i - 1,
+                          MEM_AFFINITY_ENABLED);
     }
     slots = (table_data->len - numa_start) / sizeof *numamem;
     for (; slots < pcms->numa_nodes + 2; slots++) {
         numamem = acpi_data_push(table_data, sizeof *numamem);
-        acpi_build_srat_memory(numamem, 0, 0, 0, MEM_AFFINITY_NOFLAGS);
+        build_srat_memory(numamem, 0, 0, 0, MEM_AFFINITY_NOFLAGS);
     }
 
     /*
@@ -2532,10 +2416,9 @@ build_srat(GArray *table_data, GArray *linker, MachineState *machine)
      */
     if (hotplugabble_address_space_size) {
         numamem = acpi_data_push(table_data, sizeof *numamem);
-        acpi_build_srat_memory(numamem, pcms->hotplug_memory.base,
-                               hotplugabble_address_space_size, 0,
-                               MEM_AFFINITY_HOTPLUGGABLE |
-                               MEM_AFFINITY_ENABLED);
+        build_srat_memory(numamem, pcms->hotplug_memory.base,
+                          hotplugabble_address_space_size, 0,
+                          MEM_AFFINITY_HOTPLUGGABLE | MEM_AFFINITY_ENABLED);
     }
 
     build_header(linker, table_data,
@@ -2546,7 +2429,7 @@ build_srat(GArray *table_data, GArray *linker, MachineState *machine)
 }
 
 static void
-build_mcfg_q35(GArray *table_data, GArray *linker, AcpiMcfgInfo *info)
+build_mcfg_q35(GArray *table_data, BIOSLinker *linker, AcpiMcfgInfo *info)
 {
     AcpiTableMcfg *mcfg;
     const char *sig;
@@ -2574,51 +2457,75 @@ build_mcfg_q35(GArray *table_data, GArray *linker, AcpiMcfgInfo *info)
     build_header(linker, table_data, (void *)mcfg, sig, len, 1, NULL, NULL);
 }
 
+/*
+ * VT-d spec 8.1 DMA Remapping Reporting Structure
+ * (version Oct. 2014 or later)
+ */
 static void
-build_dmar_q35(GArray *table_data, GArray *linker)
+build_dmar_q35(GArray *table_data, BIOSLinker *linker)
 {
     int dmar_start = table_data->len;
 
     AcpiTableDmar *dmar;
     AcpiDmarHardwareUnit *drhd;
+    uint8_t dmar_flags = 0;
+    X86IOMMUState *iommu = x86_iommu_get_default();
+    AcpiDmarDeviceScope *scope = NULL;
+    /* Root complex IOAPIC use one path[0] only */
+    size_t ioapic_scope_size = sizeof(*scope) + sizeof(scope->path[0]);
+
+    assert(iommu);
+    if (iommu->intr_supported) {
+        dmar_flags |= 0x1;      /* Flags: 0x1: INT_REMAP */
+    }
 
     dmar = acpi_data_push(table_data, sizeof(*dmar));
     dmar->host_address_width = VTD_HOST_ADDRESS_WIDTH - 1;
-    dmar->flags = 0;    /* No intr_remap for now */
+    dmar->flags = dmar_flags;
 
     /* DMAR Remapping Hardware Unit Definition structure */
-    drhd = acpi_data_push(table_data, sizeof(*drhd));
+    drhd = acpi_data_push(table_data, sizeof(*drhd) + ioapic_scope_size);
     drhd->type = cpu_to_le16(ACPI_DMAR_TYPE_HARDWARE_UNIT);
-    drhd->length = cpu_to_le16(sizeof(*drhd));   /* No device scope now */
+    drhd->length = cpu_to_le16(sizeof(*drhd) + ioapic_scope_size);
     drhd->flags = ACPI_DMAR_INCLUDE_PCI_ALL;
     drhd->pci_segment = cpu_to_le16(0);
     drhd->address = cpu_to_le64(Q35_HOST_BRIDGE_IOMMU_ADDR);
+
+    /* Scope definition for the root-complex IOAPIC. See VT-d spec
+     * 8.3.1 (version Oct. 2014 or later). */
+    scope = &drhd->scope[0];
+    scope->entry_type = 0x03;   /* Type: 0x03 for IOAPIC */
+    scope->length = ioapic_scope_size;
+    scope->enumeration_id = ACPI_BUILD_IOAPIC_ID;
+    scope->bus = Q35_PSEUDO_BUS_PLATFORM;
+    scope->path[0] = cpu_to_le16(Q35_PSEUDO_DEVFN_IOAPIC);
 
     build_header(linker, table_data, (void *)(table_data->data + dmar_start),
                  "DMAR", table_data->len - dmar_start, 1, NULL, NULL);
 }
 
 static GArray *
-build_rsdp(GArray *rsdp_table, GArray *linker, unsigned rsdt)
+build_rsdp(GArray *rsdp_table, BIOSLinker *linker, unsigned rsdt_tbl_offset)
 {
     AcpiRsdpDescriptor *rsdp = acpi_data_push(rsdp_table, sizeof *rsdp);
+    unsigned rsdt_pa_size = sizeof(rsdp->rsdt_physical_address);
+    unsigned rsdt_pa_offset =
+        (char *)&rsdp->rsdt_physical_address - rsdp_table->data;
 
-    bios_linker_loader_alloc(linker, ACPI_BUILD_RSDP_FILE, 16,
+    bios_linker_loader_alloc(linker, ACPI_BUILD_RSDP_FILE, rsdp_table, 16,
                              true /* fseg memory */);
 
     memcpy(&rsdp->signature, "RSD PTR ", 8);
     memcpy(rsdp->oem_id, ACPI_BUILD_APPNAME6, 6);
-    rsdp->rsdt_physical_address = cpu_to_le32(rsdt);
     /* Address to be filled by Guest linker */
-    bios_linker_loader_add_pointer(linker, ACPI_BUILD_RSDP_FILE,
-                                   ACPI_BUILD_TABLE_FILE,
-                                   rsdp_table, &rsdp->rsdt_physical_address,
-                                   sizeof rsdp->rsdt_physical_address);
-    rsdp->checksum = 0;
+    bios_linker_loader_add_pointer(linker,
+        ACPI_BUILD_RSDP_FILE, rsdt_pa_offset, rsdt_pa_size,
+        ACPI_BUILD_TABLE_FILE, rsdt_tbl_offset);
+
     /* Checksum to be filled by Guest linker */
     bios_linker_loader_add_checksum(linker, ACPI_BUILD_RSDP_FILE,
-                                    rsdp_table, rsdp, sizeof *rsdp,
-                                    &rsdp->checksum);
+        (char *)rsdp - rsdp_table->data, sizeof *rsdp,
+        (char *)&rsdp->checksum - rsdp_table->data);
 
     return rsdp_table;
 }
@@ -2658,12 +2565,7 @@ static bool acpi_get_mcfg(AcpiMcfgInfo *mcfg)
 
 static bool acpi_has_iommu(void)
 {
-    bool ambiguous;
-    Object *intel_iommu;
-
-    intel_iommu = object_resolve_path_type("", TYPE_INTEL_IOMMU_DEVICE,
-                                           &ambiguous);
-    return intel_iommu && !ambiguous;
+    return !!x86_iommu_get_default();
 }
 
 static
@@ -2676,7 +2578,7 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
     AcpiPmInfo pm;
     AcpiMiscInfo misc;
     AcpiMcfgInfo mcfg;
-    PcPciInfo pci;
+    Range pci_hole, pci_hole64;
     uint8_t *u;
     size_t aml_len = 0;
     GArray *tables_blob = tables->table_data;
@@ -2684,14 +2586,15 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
 
     acpi_get_pm_info(&pm);
     acpi_get_misc_info(&misc);
-    acpi_get_pci_info(&pci);
+    acpi_get_pci_holes(&pci_hole, &pci_hole64);
     acpi_get_slic_oem(&slic_oem);
 
     table_offsets = g_array_new(false, true /* clear */,
                                         sizeof(uint32_t));
     ACPI_BUILD_DPRINTF("init ACPI tables\n");
 
-    bios_linker_loader_alloc(tables->linker, ACPI_BUILD_TABLE_FILE,
+    bios_linker_loader_alloc(tables->linker,
+                             ACPI_BUILD_TABLE_FILE, tables_blob,
                              64 /* Ensure FACS is aligned */,
                              false /* high memory */);
 
@@ -2705,7 +2608,8 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
 
     /* DSDT is pointed to by FADT */
     dsdt = tables_blob->len;
-    build_dsdt(tables_blob, tables->linker, &pm, &misc, &pci, machine);
+    build_dsdt(tables_blob, tables->linker, &pm, &misc,
+               &pci_hole, &pci_hole64, machine);
 
     /* Count the size of the DSDT and SSDT, we will need it for legacy
      * sizing of ACPI tables.
@@ -2748,7 +2652,8 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
         build_dmar_q35(tables_blob, tables->linker);
     }
     if (pcms->acpi_nvdimm_state.is_enabled) {
-        nvdimm_build_acpi(table_offsets, tables_blob, tables->linker);
+        nvdimm_build_acpi(table_offsets, tables_blob, tables->linker,
+                          pcms->acpi_nvdimm_state.dsm_mem);
     }
 
     /* Add tables supplied by user (if any) */
@@ -2811,7 +2716,7 @@ void acpi_build(AcpiBuildTables *tables, MachineState *machine)
         acpi_align_size(tables_blob, ACPI_BUILD_TABLE_SIZE);
     }
 
-    acpi_align_size(tables->linker, ACPI_BUILD_ALIGN_SIZE);
+    acpi_align_size(tables->linker->cmd_blob, ACPI_BUILD_ALIGN_SIZE);
 
     /* Cleanup memory that's no longer used. */
     g_array_free(table_offsets, true);
@@ -2851,7 +2756,7 @@ static void acpi_build_update(void *build_opaque)
         acpi_ram_update(build_state->rsdp_mr, tables.rsdp);
     }
 
-    acpi_ram_update(build_state->linker_mr, tables.linker);
+    acpi_ram_update(build_state->linker_mr, tables.linker->cmd_blob);
     acpi_build_tables_cleanup(&tables, true);
 }
 
@@ -2915,7 +2820,8 @@ void acpi_setup(void)
     assert(build_state->table_mr != NULL);
 
     build_state->linker_mr =
-        acpi_add_rom_blob(build_state, tables.linker, "etc/table-loader", 0);
+        acpi_add_rom_blob(build_state, tables.linker->cmd_blob,
+                          "etc/table-loader", 0);
 
     fw_cfg_add_file(pcms->fw_cfg, ACPI_BUILD_TPMLOG_FILE,
                     tables.tcpalog->data, acpi_data_len(tables.tcpalog));

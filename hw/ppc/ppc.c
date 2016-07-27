@@ -164,9 +164,9 @@ static void ppc6xx_set_irq(void *opaque, int pin, int level)
     }
 }
 
-void ppc6xx_irq_init(CPUPPCState *env)
+void ppc6xx_irq_init(PowerPCCPU *cpu)
 {
-    PowerPCCPU *cpu = ppc_env_get_cpu(env);
+    CPUPPCState *env = &cpu->env;
 
     env->irq_inputs = (void **)qemu_allocate_irqs(&ppc6xx_set_irq, cpu,
                                                   PPC6xx_INPUT_NB);
@@ -251,9 +251,9 @@ static void ppc970_set_irq(void *opaque, int pin, int level)
     }
 }
 
-void ppc970_irq_init(CPUPPCState *env)
+void ppc970_irq_init(PowerPCCPU *cpu)
 {
-    PowerPCCPU *cpu = ppc_env_get_cpu(env);
+    CPUPPCState *env = &cpu->env;
 
     env->irq_inputs = (void **)qemu_allocate_irqs(&ppc970_set_irq, cpu,
                                                   PPC970_INPUT_NB);
@@ -287,9 +287,9 @@ static void power7_set_irq(void *opaque, int pin, int level)
     }
 }
 
-void ppcPOWER7_irq_init(CPUPPCState *env)
+void ppcPOWER7_irq_init(PowerPCCPU *cpu)
 {
-    PowerPCCPU *cpu = ppc_env_get_cpu(env);
+    CPUPPCState *env = &cpu->env;
 
     env->irq_inputs = (void **)qemu_allocate_irqs(&power7_set_irq, cpu,
                                                   POWER7_INPUT_NB);
@@ -372,9 +372,9 @@ static void ppc40x_set_irq(void *opaque, int pin, int level)
     }
 }
 
-void ppc40x_irq_init(CPUPPCState *env)
+void ppc40x_irq_init(PowerPCCPU *cpu)
 {
-    PowerPCCPU *cpu = ppc_env_get_cpu(env);
+    CPUPPCState *env = &cpu->env;
 
     env->irq_inputs = (void **)qemu_allocate_irqs(&ppc40x_set_irq,
                                                   cpu, PPC40x_INPUT_NB);
@@ -436,9 +436,9 @@ static void ppce500_set_irq(void *opaque, int pin, int level)
     }
 }
 
-void ppce500_irq_init(CPUPPCState *env)
+void ppce500_irq_init(PowerPCCPU *cpu)
 {
-    PowerPCCPU *cpu = ppc_env_get_cpu(env);
+    CPUPPCState *env = &cpu->env;
 
     env->irq_inputs = (void **)qemu_allocate_irqs(&ppce500_set_irq,
                                                   cpu, PPCE500_INPUT_NB);
@@ -699,9 +699,18 @@ static inline void cpu_ppc_decr_lower(PowerPCCPU *cpu)
 
 static inline void cpu_ppc_hdecr_excp(PowerPCCPU *cpu)
 {
+    CPUPPCState *env = &cpu->env;
+
     /* Raise it */
-    LOG_TB("raise decrementer exception\n");
-    ppc_set_irq(cpu, PPC_INTERRUPT_HDECR, 1);
+    LOG_TB("raise hv decrementer exception\n");
+
+    /* The architecture specifies that we don't deliver HDEC
+     * interrupts in a PM state. Not only they don't cause a
+     * wakeup but they also get effectively discarded.
+     */
+    if (!env->in_pm_state) {
+        ppc_set_irq(cpu, PPC_INTERRUPT_HDECR, 1);
+    }
 }
 
 static inline void cpu_ppc_hdecr_lower(PowerPCCPU *cpu)
@@ -880,7 +889,7 @@ static int timebase_post_load(void *opaque, int version_id)
     host_ns = qemu_clock_get_ns(QEMU_CLOCK_HOST);
     ns_diff = MAX(0, host_ns - tb_remote->time_of_the_day_ns);
     migration_duration_ns = MIN(NANOSECONDS_PER_SECOND, ns_diff);
-    migration_duration_tb = muldiv64(migration_duration_ns, freq,
+    migration_duration_tb = muldiv64(freq, migration_duration_ns,
                                      NANOSECONDS_PER_SECOND);
     guest_tb = tb_remote->guest_timebase + MIN(0, migration_duration_tb);
 
@@ -928,9 +937,7 @@ clk_setup_cb cpu_ppc_tb_init (CPUPPCState *env, uint32_t freq)
     }
     /* Create new timer */
     tb_env->decr_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &cpu_ppc_decr_cb, cpu);
-    if (0) {
-        /* XXX: find a suitable condition to enable the hypervisor decrementer
-         */
+    if (env->has_hv_mode) {
         tb_env->hdecr_timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, &cpu_ppc_hdecr_cb,
                                                 cpu);
     } else {

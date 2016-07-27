@@ -30,6 +30,8 @@
 #include "config-host.h"
 #ifdef NEED_CPU_H
 #include "config-target.h"
+#else
+#include "exec/poison.h"
 #endif
 #include "qemu/compiler.h"
 
@@ -149,7 +151,8 @@ extern int daemon(int, int);
 /* Minimum function that returns zero only iff both values are zero.
  * Intended for use with unsigned values only. */
 #ifndef MIN_NON_ZERO
-#define MIN_NON_ZERO(a, b) (((a) != 0 && (a) < (b)) ? (a) : (b))
+#define MIN_NON_ZERO(a, b) ((a) == 0 ? (b) : \
+                                ((b) == 0 ? (a) : (MIN(a, b))))
 #endif
 
 /* Round number down to multiple */
@@ -157,6 +160,20 @@ extern int daemon(int, int);
 
 /* Round number up to multiple */
 #define QEMU_ALIGN_UP(n, m) QEMU_ALIGN_DOWN((n) + (m) - 1, (m))
+
+/* Check if n is a multiple of m */
+#define QEMU_IS_ALIGNED(n, m) (((n) % (m)) == 0)
+
+/* n-byte align pointer down */
+#define QEMU_ALIGN_PTR_DOWN(p, n) \
+    ((typeof(p))QEMU_ALIGN_DOWN((uintptr_t)(p), (n)))
+
+/* n-byte align pointer up */
+#define QEMU_ALIGN_PTR_UP(p, n) \
+    ((typeof(p))QEMU_ALIGN_UP((uintptr_t)(p), (n)))
+
+/* Check if pointer p is n-bytes aligned */
+#define QEMU_PTR_IS_ALIGNED(p, n) QEMU_IS_ALIGNED((uintptr_t)(p), (n))
 
 #ifndef ROUND_UP
 #define ROUND_UP(n,d) (((n) + (d) - 1) & -(d))
@@ -180,8 +197,6 @@ void qemu_anon_ram_free(void *ptr, size_t size);
 #define QEMU_MADV_INVALID -1
 
 #if defined(CONFIG_MADVISE)
-
-#include <sys/mman.h>
 
 #define QEMU_MADV_WILLNEED  MADV_WILLNEED
 #define QEMU_MADV_DONTNEED  MADV_DONTNEED
@@ -247,10 +262,26 @@ void qemu_anon_ram_free(void *ptr, size_t size);
 
 #endif
 
+#if defined(__linux__) && \
+    (defined(__x86_64__) || defined(__arm__) || defined(__aarch64__))
+   /* Use 2 MiB alignment so transparent hugepages can be used by KVM.
+      Valgrind does not support alignments larger than 1 MiB,
+      therefore we need special code which handles running on Valgrind. */
+#  define QEMU_VMALLOC_ALIGN (512 * 4096)
+#elif defined(__linux__) && defined(__s390x__)
+   /* Use 1 MiB (segment size) alignment so gmap can be used by KVM. */
+#  define QEMU_VMALLOC_ALIGN (256 * 4096)
+#else
+#  define QEMU_VMALLOC_ALIGN getpagesize()
+#endif
+
 int qemu_madvise(void *addr, size_t len, int advice);
 
 int qemu_open(const char *name, int flags, ...);
 int qemu_close(int fd);
+#ifndef _WIN32
+int qemu_dup(int fd);
+#endif
 
 #if defined(__HAIKU__) && defined(__i386__)
 #define FMT_pid "%ld"
@@ -298,8 +329,17 @@ static inline void qemu_timersub(const struct timeval *val1,
 
 void qemu_set_cloexec(int fd);
 
+/* Starting on QEMU 2.5, qemu_hw_version() returns "2.5+" by default
+ * instead of QEMU_VERSION, so setting hw_version on MachineClass
+ * is no longer mandatory.
+ *
+ * Do NOT change this string, or it will break compatibility on all
+ * machine classes that don't set hw_version.
+ */
+#define QEMU_HW_VERSION "2.5+"
+
 /* QEMU "hardware version" setting. Used to replace code that exposed
- * QEMU_VERSION to guests in the past and need to keep compatibilty.
+ * QEMU_VERSION to guests in the past and need to keep compatibility.
  * Do not use qemu_hw_version() in new code.
  */
 void qemu_set_hw_version(const char *);

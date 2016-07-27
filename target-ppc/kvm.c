@@ -17,18 +17,18 @@
 #include "qemu/osdep.h"
 #include <dirent.h>
 #include <sys/ioctl.h>
-#include <sys/mman.h>
 #include <sys/vfs.h>
 
 #include <linux/kvm.h>
 
 #include "qemu-common.h"
 #include "qemu/error-report.h"
+#include "cpu.h"
 #include "qemu/timer.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/kvm.h"
+#include "sysemu/numa.h"
 #include "kvm_ppc.h"
-#include "cpu.h"
 #include "sysemu/cpus.h"
 #include "sysemu/device_tree.h"
 #include "mmu-hash64.h"
@@ -43,6 +43,9 @@
 #include "exec/memattrs.h"
 #include "sysemu/hostmem.h"
 #include "qemu/cutils.h"
+#if defined(TARGET_PPC64)
+#include "hw/ppc/spapr_cpu_core.h"
+#endif
 
 //#define DEBUG_KVM
 
@@ -386,7 +389,25 @@ static long getrampagesize(void)
 
     object_child_foreach(memdev_root, find_max_supported_pagesize, &hpsize);
 
-    return (hpsize == LONG_MAX) ? getpagesize() : hpsize;
+    if (hpsize == LONG_MAX || hpsize == getpagesize()) {
+        return getpagesize();
+    }
+
+    /* If NUMA is disabled or the NUMA nodes are not backed with a
+     * memory-backend, then there is at least one node using "normal"
+     * RAM. And since normal RAM has not been configured with "-mem-path"
+     * (what we've checked earlier here already), we can not use huge pages!
+     */
+    if (nb_numa_nodes == 0 || numa_info[0].node_memdev == NULL) {
+        static bool warned;
+        if (!warned) {
+            error_report("Huge page support disabled (n/a for main memory).");
+            warned = true;
+        }
+        return getpagesize();
+    }
+
+    return hpsize;
 }
 
 static bool kvm_valid_page_size(uint32_t flags, long rampgsize, uint32_t shift)
@@ -2329,6 +2350,32 @@ static PowerPCCPUClass *ppc_cpu_get_family_class(PowerPCCPUClass *pcc)
     return POWERPC_CPU_CLASS(oc);
 }
 
+PowerPCCPUClass *kvm_ppc_get_host_cpu_class(void)
+{
+    uint32_t host_pvr = mfpvr();
+    PowerPCCPUClass *pvr_pcc;
+
+    pvr_pcc = ppc_cpu_class_by_pvr(host_pvr);
+    if (pvr_pcc == NULL) {
+        pvr_pcc = ppc_cpu_class_by_pvr_mask(host_pvr);
+    }
+
+    return pvr_pcc;
+}
+
+#if defined(TARGET_PPC64)
+static void spapr_cpu_core_host_initfn(Object *obj)
+{
+    sPAPRCPUCore *core = SPAPR_CPU_CORE(obj);
+    char *name = g_strdup_printf("%s-" TYPE_POWERPC_CPU, "host");
+    ObjectClass *oc = object_class_by_name(name);
+
+    g_assert(oc);
+    g_free((void *)name);
+    core->cpu_class = oc;
+}
+#endif
+
 static int kvm_ppc_register_host_cpu_type(void)
 {
     TypeInfo type_info = {
@@ -2336,19 +2383,27 @@ static int kvm_ppc_register_host_cpu_type(void)
         .instance_init = kvmppc_host_cpu_initfn,
         .class_init = kvmppc_host_cpu_class_init,
     };
-    uint32_t host_pvr = mfpvr();
     PowerPCCPUClass *pvr_pcc;
     DeviceClass *dc;
 
-    pvr_pcc = ppc_cpu_class_by_pvr(host_pvr);
-    if (pvr_pcc == NULL) {
-        pvr_pcc = ppc_cpu_class_by_pvr_mask(host_pvr);
-    }
+    pvr_pcc = kvm_ppc_get_host_cpu_class();
     if (pvr_pcc == NULL) {
         return -1;
     }
     type_info.parent = object_class_get_name(OBJECT_CLASS(pvr_pcc));
     type_register(&type_info);
+
+#if defined(TARGET_PPC64)
+    type_info.name = g_strdup_printf("%s-"TYPE_SPAPR_CPU_CORE, "host");
+    type_info.parent = TYPE_SPAPR_CPU_CORE,
+    type_info.instance_size = sizeof(sPAPRCPUCore),
+    type_info.instance_init = spapr_cpu_core_host_initfn,
+    type_info.class_init = NULL;
+    type_register(&type_info);
+    g_free((void *)type_info.name);
+    type_info.instance_size = 0;
+    type_info.instance_init = NULL;
+#endif
 
     /* Register generic family CPU class for a family */
     pvr_pcc = ppc_cpu_get_family_class(pvr_pcc);
@@ -2562,6 +2617,17 @@ error_out:
 
 int kvm_arch_fixup_msi_route(struct kvm_irq_routing_entry *route,
                              uint64_t address, uint32_t data, PCIDevice *dev)
+{
+    return 0;
+}
+
+int kvm_arch_add_msi_route_post(struct kvm_irq_routing_entry *route,
+                                int vector, PCIDevice *dev)
+{
+    return 0;
+}
+
+int kvm_arch_release_virq_post(int virq)
 {
     return 0;
 }

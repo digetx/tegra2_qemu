@@ -363,7 +363,7 @@ sub sanitise_line {
 	for ($off = 1; $off < length($line); $off++) {
 		$c = substr($line, $off, 1);
 
-		# Comments we are wacking completly including the begin
+		# Comments we are wacking completely including the begin
 		# and end, all to $;.
 		if ($sanitise_quote eq '' && substr($line, $off, 2) eq '/*') {
 			$sanitise_quote = '*/';
@@ -1277,6 +1277,11 @@ sub process {
 			if ($realfile =~ /(\bMakefile(?:\.objs)?|\.c|\.cc|\.cpp|\.h|\.mak|\.[sS])$/) {
 				ERROR("do not set execute permissions for source files\n" . $permhere);
 			}
+		}
+
+# Accept git diff extended headers as valid patches
+		if ($line =~ /^(?:rename|copy) (?:from|to) [\w\/\.\-]+\s*$/) {
+			$is_patch = 1;
 		}
 
 #check the patch for a signoff:
@@ -2453,7 +2458,7 @@ sub process {
 		}
 
 # recommend qemu_strto* over strto* for numeric conversions
-		if ($line =~ /\b(strto[^k].*?)\s*\(/) {
+		if ($line =~ /\b(strto[^kd].*?)\s*\(/) {
 			WARN("consider using qemu_$1 in preference to $1\n" . $herecurr);
 		}
 # check for module_init(), use category-specific init macros explicitly please

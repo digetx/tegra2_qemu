@@ -22,17 +22,17 @@
  */
 
 #include "qemu/osdep.h"
-#include <hw/hw.h>
-#include <hw/pci/msi.h>
-#include <hw/i386/pc.h>
-#include <hw/pci/pci.h>
+#include "hw/hw.h"
+#include "hw/pci/msi.h"
+#include "hw/i386/pc.h"
+#include "hw/pci/pci.h"
 
 #include "qemu/error-report.h"
 #include "sysemu/block-backend.h"
 #include "sysemu/dma.h"
-#include "internal.h"
-#include <hw/ide/pci.h>
-#include <hw/ide/ahci.h>
+#include "hw/ide/internal.h"
+#include "hw/ide/pci.h"
+#include "hw/ide/ahci.h"
 
 #define DEBUG_AHCI 0
 
@@ -1006,7 +1006,8 @@ static void execute_ncq_command(NCQTransferState *ncq_tfs)
         dma_acct_start(ide_state->blk, &ncq_tfs->acct,
                        &ncq_tfs->sglist, BLOCK_ACCT_READ);
         ncq_tfs->aiocb = dma_blk_read(ide_state->blk, &ncq_tfs->sglist,
-                                      ncq_tfs->lba, ncq_cb, ncq_tfs);
+                                      ncq_tfs->lba << BDRV_SECTOR_BITS,
+                                      ncq_cb, ncq_tfs);
         break;
     case WRITE_FPDMA_QUEUED:
         DPRINTF(port, "NCQ writing %d sectors to LBA %"PRId64", tag %d\n",
@@ -1018,7 +1019,8 @@ static void execute_ncq_command(NCQTransferState *ncq_tfs)
         dma_acct_start(ide_state->blk, &ncq_tfs->acct,
                        &ncq_tfs->sglist, BLOCK_ACCT_WRITE);
         ncq_tfs->aiocb = dma_blk_write(ide_state->blk, &ncq_tfs->sglist,
-                                       ncq_tfs->lba, ncq_cb, ncq_tfs);
+                                       ncq_tfs->lba << BDRV_SECTOR_BITS,
+                                       ncq_cb, ncq_tfs);
         break;
     default:
         DPRINTF(port, "error: unsupported NCQ command (0x%02x) received\n",

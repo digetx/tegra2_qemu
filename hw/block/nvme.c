@@ -21,10 +21,10 @@
  */
 
 #include "qemu/osdep.h"
-#include <hw/block/block.h>
-#include <hw/hw.h>
-#include <hw/pci/msix.h>
-#include <hw/pci/pci.h>
+#include "hw/block/block.h"
+#include "hw/hw.h"
+#include "hw/pci/msix.h"
+#include "hw/pci/pci.h"
 #include "sysemu/sysemu.h"
 #include "qapi/error.h"
 #include "qapi/visitor.h"
@@ -239,7 +239,7 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     uint8_t lba_index  = NVME_ID_NS_FLBAS_INDEX(ns->id_ns.flbas);
     uint8_t data_shift = ns->id_ns.lbaf[lba_index].ds;
     uint64_t data_size = (uint64_t)nlb << data_shift;
-    uint64_t aio_slba  = slba << (data_shift - BDRV_SECTOR_BITS);
+    uint64_t data_offset = slba << data_shift;
     int is_write = rw->opcode == NVME_CMD_WRITE ? 1 : 0;
     enum BlockAcctType acct = is_write ? BLOCK_ACCT_WRITE : BLOCK_ACCT_READ;
 
@@ -258,8 +258,8 @@ static uint16_t nvme_rw(NvmeCtrl *n, NvmeNamespace *ns, NvmeCmd *cmd,
     req->has_sg = true;
     dma_acct_start(n->conf.blk, &req->acct, &req->qsg, acct);
     req->aiocb = is_write ?
-        dma_blk_write(n->conf.blk, &req->qsg, aio_slba, nvme_rw_cb, req) :
-        dma_blk_read(n->conf.blk, &req->qsg, aio_slba, nvme_rw_cb, req);
+        dma_blk_write(n->conf.blk, &req->qsg, data_offset, nvme_rw_cb, req) :
+        dma_blk_read(n->conf.blk, &req->qsg, data_offset, nvme_rw_cb, req);
 
     return NVME_NO_COMPLETE;
 }
@@ -803,6 +803,7 @@ static int nvme_init(PCIDevice *pci_dev)
         return -1;
     }
     blkconf_blocksizes(&n->conf);
+    blkconf_apply_backend_options(&n->conf);
 
     pci_conf = pci_dev->config;
     pci_conf[PCI_INTERRUPT_PIN] = 1;

@@ -767,14 +767,10 @@ static inline bool vhost_needs_vring_endian(VirtIODevice *vdev)
     if (virtio_vdev_has_feature(vdev, VIRTIO_F_VERSION_1)) {
         return false;
     }
-#ifdef TARGET_IS_BIENDIAN
 #ifdef HOST_WORDS_BIGENDIAN
     return vdev->device_endian == VIRTIO_DEVICE_ENDIAN_LITTLE;
 #else
     return vdev->device_endian == VIRTIO_DEVICE_ENDIAN_BIG;
-#endif
-#else
-    return false;
 #endif
 }
 
@@ -964,6 +960,28 @@ static void vhost_eventfd_del(MemoryListener *listener,
 {
 }
 
+static int vhost_virtqueue_set_busyloop_timeout(struct vhost_dev *dev,
+                                                int n, uint32_t timeout)
+{
+    int vhost_vq_index = dev->vhost_ops->vhost_get_vq_index(dev, n);
+    struct vhost_vring_state state = {
+        .index = vhost_vq_index,
+        .num = timeout,
+    };
+    int r;
+
+    if (!dev->vhost_ops->vhost_set_vring_busyloop_timeout) {
+        return -EINVAL;
+    }
+
+    r = dev->vhost_ops->vhost_set_vring_busyloop_timeout(dev, &state);
+    if (r) {
+        return r;
+    }
+
+    return 0;
+}
+
 static int vhost_virtqueue_init(struct vhost_dev *dev,
                                 struct vhost_virtqueue *vq, int n)
 {
@@ -994,7 +1012,7 @@ static void vhost_virtqueue_cleanup(struct vhost_virtqueue *vq)
 }
 
 int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
-                   VhostBackendType backend_type)
+                   VhostBackendType backend_type, uint32_t busyloop_timeout)
 {
     uint64_t features;
     int i, r;
@@ -1035,6 +1053,17 @@ int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
             goto fail_vq;
         }
     }
+
+    if (busyloop_timeout) {
+        for (i = 0; i < hdev->nvqs; ++i) {
+            r = vhost_virtqueue_set_busyloop_timeout(hdev, hdev->vq_index + i,
+                                                     busyloop_timeout);
+            if (r < 0) {
+                goto fail_busyloop;
+            }
+        }
+    }
+
     hdev->features = features;
 
     hdev->memory_listener = (MemoryListener) {
@@ -1077,6 +1106,11 @@ int vhost_dev_init(struct vhost_dev *hdev, void *opaque,
     hdev->memory_changed = false;
     memory_listener_register(&hdev->memory_listener, &address_space_memory);
     return 0;
+fail_busyloop:
+    while (--i >= 0) {
+        vhost_virtqueue_set_busyloop_timeout(hdev, hdev->vq_index + i, 0);
+    }
+    i = hdev->nvqs;
 fail_vq:
     while (--i >= 0) {
         vhost_virtqueue_cleanup(hdev->vqs + i);
@@ -1114,14 +1148,15 @@ int vhost_dev_enable_notifiers(struct vhost_dev *hdev, VirtIODevice *vdev)
     VirtioBusState *vbus = VIRTIO_BUS(qbus);
     VirtioBusClass *k = VIRTIO_BUS_GET_CLASS(vbus);
     int i, r, e;
-    if (!k->set_host_notifier) {
+    if (!k->ioeventfd_started) {
         fprintf(stderr, "binding does not support host notifiers\n");
         r = -ENOSYS;
         goto fail;
     }
 
     for (i = 0; i < hdev->nvqs; ++i) {
-        r = k->set_host_notifier(qbus->parent, hdev->vq_index + i, true);
+        r = virtio_bus_set_host_notifier(VIRTIO_BUS(qbus), hdev->vq_index + i,
+                                         true);
         if (r < 0) {
             fprintf(stderr, "vhost VQ %d notifier binding failed: %d\n", i, -r);
             goto fail_vq;
@@ -1131,7 +1166,8 @@ int vhost_dev_enable_notifiers(struct vhost_dev *hdev, VirtIODevice *vdev)
     return 0;
 fail_vq:
     while (--i >= 0) {
-        e = k->set_host_notifier(qbus->parent, hdev->vq_index + i, false);
+        e = virtio_bus_set_host_notifier(VIRTIO_BUS(qbus), hdev->vq_index + i,
+                                         false);
         if (e < 0) {
             fprintf(stderr, "vhost VQ %d notifier cleanup error: %d\n", i, -r);
             fflush(stderr);
@@ -1150,12 +1186,11 @@ fail:
 void vhost_dev_disable_notifiers(struct vhost_dev *hdev, VirtIODevice *vdev)
 {
     BusState *qbus = BUS(qdev_get_parent_bus(DEVICE(vdev)));
-    VirtioBusState *vbus = VIRTIO_BUS(qbus);
-    VirtioBusClass *k = VIRTIO_BUS_GET_CLASS(vbus);
     int i, r;
 
     for (i = 0; i < hdev->nvqs; ++i) {
-        r = k->set_host_notifier(qbus->parent, hdev->vq_index + i, false);
+        r = virtio_bus_set_host_notifier(VIRTIO_BUS(qbus), hdev->vq_index + i,
+                                         false);
         if (r < 0) {
             fprintf(stderr, "vhost VQ %d notifier cleanup failed: %d\n", i, -r);
             fflush(stderr);
