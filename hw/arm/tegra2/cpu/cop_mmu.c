@@ -20,6 +20,8 @@
 #include "qemu/osdep.h"
 #include "hw/arm/arm.h"
 #include "hw/sysbus.h"
+#include "cpu.h"
+#include "exec/exec-all.h"
 
 #include "tcg-op.h"
 

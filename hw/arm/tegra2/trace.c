@@ -22,11 +22,12 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
-#include <sysemu/sysemu.h>
+#include "sysemu/sysemu.h"
 #include "hw/ptimer.h"
 #include "hw/sysbus.h"
 #include "qemu/sockets.h"
 #include "qemu/thread.h"
+#include "cpu.h"
 
 #include "ahb/host1x/include/host1x_cdma.h"
 #include "ppsb/timer/timer_us.h"

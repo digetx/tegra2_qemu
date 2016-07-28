@@ -20,6 +20,7 @@
 #include "qemu/osdep.h"
 #include "qapi/error.h"
 #include "qemu/error-report.h"
+#include "cpu.h"
 #include "exec/address-spaces.h"
 #include "hw/boards.h"
 #include "hw/sysbus.h"
@@ -401,7 +402,7 @@ static void tegra2_init(MachineState *machine)
 //     sysbus_create_simple("tegra.uart", TEGRA_UARTA_BASE, DIRQ(INT_UARTA));
     tegra_uartd_dev = serial_mm_init(sysmem, TEGRA_UARTD_BASE, 2,
                                      DIRQ(INT_UARTD), 115200,
-                                     qemu_char_get_next_serial(),
+                                     serial_hds[0],
                                      DEVICE_LITTLE_ENDIAN);
 
     /* USB2 controllers */

@@ -21,6 +21,7 @@
 
 #include "qemu/osdep.h"
 #include "hw/sysbus.h"
+#include "cpu.h"
 
 #include "clk_rst.h"
 #include "remote_io.h"

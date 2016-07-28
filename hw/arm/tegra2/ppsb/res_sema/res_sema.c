@@ -19,6 +19,7 @@
 
 #include "qemu/osdep.h"
 #include "hw/sysbus.h"
+#include "cpu.h"
 
 #include "res_sema.h"
 #include "iomap.h"

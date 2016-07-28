@@ -21,6 +21,7 @@
 #include "hw/cpu/a9mpcore.h"
 #include "hw/sysbus.h"
 #include "hw/irq.h"
+#include "cpu.h"
 
 #include "devices.h"
 #include "irqs.h"

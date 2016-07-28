@@ -23,6 +23,7 @@
 #include "qapi/error.h"
 #include "qemu/error-report.h"
 #include "hw/hw.h"
+#include "cpu.h"
 
 #include "irqs.h"
 #include "remote_io.h"

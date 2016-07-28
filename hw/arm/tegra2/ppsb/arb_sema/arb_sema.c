@@ -19,6 +19,7 @@
 
 #include "qemu/osdep.h"
 #include "hw/sysbus.h"
+#include "cpu.h"
 
 #include "arb_sema.h"
 #include "arb.h"

@@ -23,9 +23,8 @@
 #include "hw/intc/gic_internal.h"
 #include "hw/ptimer.h"
 #include "hw/sysbus.h"
-#include "exec/address-spaces.h"
-#include "exec/helper-proto.h"
-#include "exec/cpu_ldst.h"
+#include "cpu.h"
+#include "exec/exec-all.h"
 #include "sysemu/sysemu.h"
 
 #include "clk_rst.h"

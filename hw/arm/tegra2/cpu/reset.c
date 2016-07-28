@@ -21,6 +21,7 @@
 #include "hw/hw.h"
 #include "hw/arm/arm.h"
 #include "sysemu/sysemu.h"
+#include "cpu.h"
 
 #include "devices.h"
 #include "iomap.h"
