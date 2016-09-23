@@ -286,7 +286,9 @@ static void tegra_dc_compose(void *opaque)
     tegra_dc_compose_window(s->console, &s->win_b);
     tegra_dc_compose_window(s->console, &s->win_c);
 
-    dpy_gfx_update(s->console, 0, 0, s->disp_width, s->disp_height);
+    dpy_gfx_update(s->console, 0, 0,
+                   s->dc.disp_disp_active.h_disp_active,
+                   s->dc.disp_disp_active.v_disp_active);
 }
 
 static const GraphicHwOps tegra_dc_ops = {
