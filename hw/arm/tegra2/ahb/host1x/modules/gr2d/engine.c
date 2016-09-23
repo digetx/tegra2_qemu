@@ -131,7 +131,7 @@ static void __process_2d(gr2d_ctx *ctx)
             g_assert(ctx->g2sb_g2ropfade.rop == GXcopy);
 
             dst_ptr = dma_memory_map(&address_space_memory,
-                                     ALIGN(ctx->g2sb_g2dstba.reg32, 256),
+                                     ALIGN(ctx->g2sb_g2dstba.reg32, 8),
                                      &dma_dst_sz, DMA_DIRECTION_FROM_DEVICE);
 
             pixman_fill(dst_ptr, ALIGN(ctx->g2sb_g2dstst.dsts, 1) >> 2,
@@ -142,7 +142,7 @@ static void __process_2d(gr2d_ctx *ctx)
                         ctx->g2sb_g2srcfgc.reg32);
 
             dma_memory_unmap(&address_space_memory, dst_ptr,
-                             ALIGN(ctx->g2sb_g2dstba.reg32, 256),
+                             ALIGN(ctx->g2sb_g2dstba.reg32, 8),
                              DMA_DIRECTION_FROM_DEVICE, dma_dst_sz);
         } else {
             dma_dst_sz = ctx->g2sb_g2dstst.dsts * ctx->g2sb_g2dstsize.dstheight;
@@ -173,11 +173,11 @@ static void __process_2d(gr2d_ctx *ctx)
             g_assert(ctx->g2sb_g2controlmain.srccd == 1);
 
             src_ptr = dma_memory_map(&address_space_memory,
-                                     ALIGN(ctx->g2sb_g2srcba.reg32, 256),
+                                     ALIGN(ctx->g2sb_g2srcba.reg32, 8),
                                      &dma_src_sz, DMA_DIRECTION_TO_DEVICE);
 
             dst_ptr = dma_memory_map(&address_space_memory,
-                                     ALIGN(ctx->g2sb_g2dstba.reg32, 256),
+                                     ALIGN(ctx->g2sb_g2dstba.reg32, 8),
                                      &dma_dst_sz, DMA_DIRECTION_FROM_DEVICE);
 
 //             g_assert(ctx->g2sb_g2srcst.srcs != (1 << ctx->g2sb_g2controlmain.dstcd) * ctx->g2sb_g2srcsize.srcwidth);
@@ -206,11 +206,11 @@ static void __process_2d(gr2d_ctx *ctx)
             }
 
             dma_memory_unmap(&address_space_memory, dst_ptr,
-                             ALIGN(ctx->g2sb_g2dstba.reg32, 256),
+                             ALIGN(ctx->g2sb_g2dstba.reg32, 8),
                              DMA_DIRECTION_FROM_DEVICE, dma_dst_sz);
 
             dma_memory_unmap(&address_space_memory, src_ptr,
-                             ALIGN(ctx->g2sb_g2srcba.reg32, 256),
+                             ALIGN(ctx->g2sb_g2srcba.reg32, 8),
                              DMA_DIRECTION_TO_DEVICE, dma_src_sz);
         }
         break;
