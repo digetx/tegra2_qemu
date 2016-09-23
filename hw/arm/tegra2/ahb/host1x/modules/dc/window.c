@@ -169,7 +169,7 @@ static void update_window_surface(display_window *win)
 
 //     starting_address += win->regs_active.win_buf_stride.reg32 * buf_index;
 
-    starting_address += win->regs_active.winbuf_start_addr_v.reg32 * \
+    starting_address += win->regs_active.winbuf_addr_v_offset.reg32 * \
                         win->regs_active.win_line_stride.line_stride;
 
     starting_address += win->regs_active.winbuf_addr_h_offset.reg32;
