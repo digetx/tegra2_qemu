@@ -244,6 +244,11 @@ static void tegra2_init(MachineState *machine)
     CPUState *cs;
     int i, j;
 
+    if (use_icount) {
+        fprintf(stderr, "%s: icount mode unsupported\n", __func__);
+        exit(1);
+    }
+
     /* Main RAM */
     assert(machine->ram_size <= TEGRA_DRAM_SIZE);
     memory_region_add_and_init_ram(sysmem, "tegra.dram",

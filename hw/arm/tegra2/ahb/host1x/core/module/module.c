@@ -26,8 +26,15 @@ static QLIST_HEAD(, host1x_module) host1x_modules =
 
 void register_host1x_bus_module(struct host1x_module* module, void *opaque)
 {
+    struct host1x_module* module__;
+
     module->owner = -1;
     module->opaque = opaque;
+
+    QLIST_FOREACH(module__, &host1x_modules, next) {
+        g_assert(module__->class_id != module->class_id);
+    }
+
     QLIST_INSERT_HEAD(&host1x_modules, module, next);
 }
 

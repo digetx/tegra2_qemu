@@ -530,9 +530,6 @@ static void dc_write(void *regs, uint32_t offset, uint32_t value)
         break;
     case CMD_INT_STATUS_OFFSET:
         dc->cmd_int_status.reg32 &= (~value & 0x1DFF9F);
-
-//         if (!dc->cmd_int_status.reg32)
-//             TRACE_IRQ_LOWER(dc->iomem.addr, dc->irq);
         break;
     case CMD_INT_MASK_OFFSET:
         dc->cmd_int_mask.reg32 = value;

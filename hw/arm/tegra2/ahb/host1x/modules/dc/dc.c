@@ -18,11 +18,16 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/main-loop.h"
+#include "hw/ptimer.h"
 #include "hw/sysbus.h"
 #include "ui/console.h"
 
 #include "registers/dc.h"
 #include "window.h"
+
+#include "host1x_module.h"
+#include "host1x_syncpts.h"
 
 #include "iomap.h"
 #include "tegra_trace.h"
@@ -60,6 +65,12 @@ typedef struct tegra_dc_state {
     display_window win_a;
     display_window win_b;
     display_window win_c;
+
+    struct host1x_module module;
+
+    uint8_t disp_refresh_rate;
+    ptimer_state *ptimer;
+    QEMUBH *bh;
 } tegra_dc;
 
 static uint64_t tegra_dc_priv_read(void *opaque, hwaddr offset,
@@ -122,6 +133,36 @@ static void tegra_dc_priv_write(void *opaque, hwaddr offset,
     case 0x0 ... 0x4C1:
         TRACE_WRITE(s->iomem.addr, offset, old, value);
         dc_handler.write(&s->dc, offset, value);
+
+        if (offset == CMD_INT_STATUS_OFFSET) {
+            if (!s->dc.cmd_int_status.reg32) {
+                TRACE_IRQ_LOWER(s->iomem.addr, s->irq);
+            }
+        }
+
+        if (offset == CMD_DISPLAY_COMMAND_OFFSET) {
+            cmd_display_command_t old_cmd = { .reg32 = old };
+
+            if (old_cmd.display_ctrl_mode !=
+                    s->dc.cmd_display_command.display_ctrl_mode)
+            {
+                switch (s->dc.cmd_display_command.display_ctrl_mode) {
+                case 0:
+                    ptimer_stop(s->ptimer);
+                    break;
+                case 1:
+                    ptimer_set_limit(s->ptimer, 1, 1);
+                    ptimer_run(s->ptimer, 0);
+                    break;
+                case 2:
+                    ptimer_set_limit(s->ptimer, 1, 1);
+                    ptimer_run(s->ptimer, 1);
+                    break;
+                default:
+                    g_assert_not_reached();
+                }
+            }
+        }
 
         if (offset == CMD_STATE_CONTROL_OFFSET) {
             if (s->dc.cmd_state_control.win_a_act_req)
@@ -191,18 +232,63 @@ static void tegra_dc_compose_window(QemuConsole *console, display_window *win)
                            win->regs_active.win_size.v_size);
 }
 
+static void tegra_dc_vblank(void *opaque)
+{
+    tegra_dc *s = opaque;
+
+    if (s->dc.cmd_display_command.display_ctrl_mode == 0) {
+        return;
+    }
+
+    if (s->dc.cmd_cont_syncpt_vsync.vsync_en) {
+        host1x_incr_syncpt(s->dc.cmd_cont_syncpt_vsync.vsync_indx);
+    }
+
+    if (!s->dc.cmd_int_mask.v_blank_int_mask) {
+        return;
+    }
+
+    s->dc.cmd_int_status.v_blank_int = 1;
+
+    TRACE_IRQ_RAISE(s->iomem.addr, s->irq);
+}
+
+static void tegra_dc_module_write(struct host1x_module *module,
+                                  uint32_t offset, uint32_t data)
+{
+    tegra_dc *s = module->opaque;
+
+    TRACE_WRITE(module->class_id, offset, data, data);
+
+    dc_handler.write(&s->dc, offset, data);
+}
+
+static uint32_t tegra_dc_module_read(struct host1x_module *module,
+                                     uint32_t offset)
+{
+    tegra_dc *s = module->opaque;
+    uint32_t ret = dc_handler.read(&s->dc, offset);
+
+    TRACE_READ(module->class_id, offset, ret);
+
+    return ret;
+}
+
 static void tegra_dc_compose(void *opaque)
 {
     tegra_dc *s = opaque;
 
-    if (!s->dc.cmd_display_command.display_ctrl_mode)
+    if (s->dc.cmd_display_command.display_ctrl_mode == 0) {
         return;
+    }
 
     tegra_dc_compose_window(s->console, &s->win_a);
     tegra_dc_compose_window(s->console, &s->win_b);
     tegra_dc_compose_window(s->console, &s->win_c);
 
-    dpy_gfx_update(s->console, 0, 0, s->disp_width, s->disp_height);
+    dpy_gfx_update(s->console, 0, 0,
+                   s->dc.disp_disp_active.h_disp_active,
+                   s->dc.disp_disp_active.v_disp_active);
 }
 
 static const GraphicHwOps tegra_dc_ops = {
@@ -223,6 +309,14 @@ static void tegra_dc_priv_realize(DeviceState *dev, Error **errp)
     init_window(&s->win_b, WIN_B_CAPS);
     init_window(&s->win_c, WIN_C_CAPS);
 
+    s->bh = qemu_bh_new(tegra_dc_vblank, s);
+    s->ptimer = ptimer_init(s->bh);
+    ptimer_set_freq(s->ptimer, s->disp_refresh_rate);
+
+    s->module.reg_write = tegra_dc_module_write;
+    s->module.reg_read = tegra_dc_module_read;
+    register_host1x_bus_module(&s->module, s);
+
     s->console = graphic_console_init(DEVICE(dev), 0, &tegra_dc_ops, s);
     qemu_console_resize(s->console, s->disp_width, s->disp_height);
 }
@@ -230,6 +324,8 @@ static void tegra_dc_priv_realize(DeviceState *dev, Error **errp)
 static Property tegra_dc_properties[] = {
     DEFINE_PROP_UINT32("display_width",  tegra_dc, disp_width, 1366),
     DEFINE_PROP_UINT32("display_height", tegra_dc, disp_height, 768),
+    DEFINE_PROP_UINT8("refresh_rate", tegra_dc, disp_refresh_rate, 60),
+    DEFINE_PROP_UINT8("class_id", tegra_dc, module.class_id, 0x70),
     DEFINE_PROP_END_OF_LIST(),
 };
 
