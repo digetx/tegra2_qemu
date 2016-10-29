@@ -9,8 +9,14 @@ $(call set-vpath, $(SRC_PATH)/pc-bios/optionrom)
 
 .PHONY : all clean build-all
 
+# Compiling with no optimization creates ROMs that are too large
+ifeq ($(lastword $(filter -O%, -O0 $(CFLAGS))),-O0)
+override CFLAGS += -O2
+endif
+
 # Drop -fstack-protector and the like
 QEMU_CFLAGS := $(filter -W%, $(QEMU_CFLAGS)) $(CFLAGS_NOPIE) -ffreestanding
+QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), -fno-stack-protector)
 QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), -m16)
 ifeq ($(filter -m16, $(QEMU_CFLAGS)),)
 # Attempt to work around compilers that lack -m16 (GCC <= 4.8, clang <= ??)
@@ -24,13 +30,11 @@ QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), -no-integrated-as)
 QEMU_CFLAGS += -m32 -include $(SRC_PATH)/pc-bios/optionrom/code16gcc.h
 endif
 
-# Drop gcov and glib flags
-CFLAGS := $(filter -O% -g%, $(CFLAGS))
 QEMU_INCLUDES += -I$(SRC_PATH)
 
 Wa = -Wa,
 ASFLAGS += -32
-QEMU_CFLAGS += $(call cc-option, $(QEMU_CFLAGS), $(Wa)-32)
+QEMU_CFLAGS += $(call cc-c-option, $(QEMU_CFLAGS), $(Wa)-32)
 
 build-all: multiboot.bin linuxboot.bin linuxboot_dma.bin kvmvapic.bin
 
@@ -41,14 +45,8 @@ build-all: multiboot.bin linuxboot.bin linuxboot_dma.bin kvmvapic.bin
 %.o: %.S
 	$(call quiet-command,$(CPP) $(QEMU_INCLUDES) $(QEMU_DGFLAGS) -c -o - $< | $(AS) $(ASFLAGS) -o $@,"  AS    $(TARGET_DIR)$@")
 
-ifdef CONFIG_WIN32
-LD_EMULATION = i386pe
-else
-LD_EMULATION = elf_i386
-endif
-
 %.img: %.o
-	$(call quiet-command,$(LD) $(LDFLAGS_NOPIE) -m $(LD_EMULATION) -Ttext 0 -e _start -s -o $@ $<,"  Building $(TARGET_DIR)$@")
+	$(call quiet-command,$(LD) $(LDFLAGS_NOPIE) -m $(LD_I386_EMULATION) -T $(SRC_PATH)/pc-bios/optionrom/flat.lds -s -o $@ $<,"  Building $(TARGET_DIR)$@")
 
 %.raw: %.img
 	$(call quiet-command,$(OBJCOPY) -O binary -j .text $< $@,"  Building $(TARGET_DIR)$@")

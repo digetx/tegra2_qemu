@@ -5133,7 +5133,7 @@ POWERPC_FAMILY(e500mc)(ObjectClass *oc, void *data)
     dc->desc = "e500mc core";
     pcc->init_proc = init_proc_e500mc;
     pcc->check_pow = check_pow_none;
-    pcc->insns_flags = PPC_INSNS_BASE | PPC_ISEL |
+    pcc->insns_flags = PPC_INSNS_BASE | PPC_ISEL | PPC_MFTB |
                        PPC_WRTEE | PPC_RFDI | PPC_RFMCI |
                        PPC_CACHE | PPC_CACHE_LOCK | PPC_CACHE_ICBI |
                        PPC_CACHE_DCBZ | PPC_CACHE_DCBA |
@@ -5179,7 +5179,7 @@ POWERPC_FAMILY(e5500)(ObjectClass *oc, void *data)
     dc->desc = "e5500 core";
     pcc->init_proc = init_proc_e5500;
     pcc->check_pow = check_pow_none;
-    pcc->insns_flags = PPC_INSNS_BASE | PPC_ISEL |
+    pcc->insns_flags = PPC_INSNS_BASE | PPC_ISEL | PPC_MFTB |
                        PPC_WRTEE | PPC_RFDI | PPC_RFMCI |
                        PPC_CACHE | PPC_CACHE_LOCK | PPC_CACHE_ICBI |
                        PPC_CACHE_DCBZ | PPC_CACHE_DCBA |
@@ -10006,6 +10006,19 @@ static ObjectClass *ppc_cpu_class_by_name(const char *name)
     for (i = 0; ppc_cpu_aliases[i].alias != NULL; i++) {
         if (strcmp(ppc_cpu_aliases[i].alias, name) == 0) {
             return ppc_cpu_class_by_alias(&ppc_cpu_aliases[i]);
+        }
+    }
+
+    return NULL;
+}
+
+const char *ppc_cpu_lookup_alias(const char *alias)
+{
+    int ai;
+
+    for (ai = 0; ppc_cpu_aliases[ai].alias != NULL; ai++) {
+        if (strcmp(ppc_cpu_aliases[ai].alias, alias) == 0) {
+            return ppc_cpu_aliases[ai].model;
         }
     }
 

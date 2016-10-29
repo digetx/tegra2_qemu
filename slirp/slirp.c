@@ -773,10 +773,10 @@ void slirp_pollfds_poll(GArray *pollfds, int select_error)
 
 static void arp_input(Slirp *slirp, const uint8_t *pkt, int pkt_len)
 {
-    struct arphdr *ah = (struct arphdr *)(pkt + ETH_HLEN);
-    uint8_t arp_reply[max(ETH_HLEN + sizeof(struct arphdr), 64)];
+    struct slirp_arphdr *ah = (struct slirp_arphdr *)(pkt + ETH_HLEN);
+    uint8_t arp_reply[max(ETH_HLEN + sizeof(struct slirp_arphdr), 64)];
     struct ethhdr *reh = (struct ethhdr *)arp_reply;
-    struct arphdr *rah = (struct arphdr *)(arp_reply + ETH_HLEN);
+    struct slirp_arphdr *rah = (struct slirp_arphdr *)(arp_reply + ETH_HLEN);
     int ar_op;
     struct ex_list *ex_ptr;
 
@@ -890,9 +890,9 @@ static int if_encap4(Slirp *slirp, struct mbuf *ifm, struct ethhdr *eh,
         return 1;
     }
     if (!arp_table_search(slirp, iph->ip_dst.s_addr, ethaddr)) {
-        uint8_t arp_req[ETH_HLEN + sizeof(struct arphdr)];
+        uint8_t arp_req[ETH_HLEN + sizeof(struct slirp_arphdr)];
         struct ethhdr *reh = (struct ethhdr *)arp_req;
-        struct arphdr *rah = (struct arphdr *)(arp_req + ETH_HLEN);
+        struct slirp_arphdr *rah = (struct slirp_arphdr *)(arp_req + ETH_HLEN);
 
         if (!ifm->resolution_requested) {
             /* If the client addr is not known, send an ARP request */
@@ -1197,8 +1197,8 @@ static void slirp_socket_save(QEMUFile *f, struct socket *so)
         qemu_put_be16(f, so->so_fport);
         break;
     default:
-        error_report(
-                "so_ffamily unknown, unable to save so_faddr and so_fport\n");
+        error_report("so_ffamily unknown, unable to save so_faddr and"
+                     " so_fport");
     }
     qemu_put_be16(f, so->so_lfamily);
     switch (so->so_lfamily) {
@@ -1207,8 +1207,8 @@ static void slirp_socket_save(QEMUFile *f, struct socket *so)
         qemu_put_be16(f, so->so_lport);
         break;
     default:
-        error_report(
-                "so_ffamily unknown, unable to save so_laddr and so_lport\n");
+        error_report("so_ffamily unknown, unable to save so_laddr and"
+                     " so_lport");
     }
     qemu_put_byte(f, so->so_iptos);
     qemu_put_byte(f, so->so_emu);

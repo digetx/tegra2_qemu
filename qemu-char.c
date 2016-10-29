@@ -786,6 +786,13 @@ static GSource *mux_chr_add_watch(CharDriverState *s, GIOCondition cond)
     return d->drv->chr_add_watch(d->drv, cond);
 }
 
+static void mux_chr_close(struct CharDriverState *chr)
+{
+    MuxDriver *d = chr->opaque;
+
+    g_free(d);
+}
+
 static CharDriverState *qemu_chr_open_mux(const char *id,
                                           ChardevBackend *backend,
                                           ChardevReturn *ret, Error **errp)
@@ -810,6 +817,7 @@ static CharDriverState *qemu_chr_open_mux(const char *id,
     chr->opaque = d;
     d->drv = drv;
     d->focus = -1;
+    chr->chr_close = mux_chr_close;
     chr->chr_write = mux_chr_write;
     chr->chr_update_read_handler = mux_chr_update_read_handler;
     chr->chr_accept_input = mux_chr_accept_input;
@@ -2761,13 +2769,16 @@ static int tcp_set_msgfds(CharDriverState *chr, int *fds, int num)
 {
     TCPCharDriver *s = chr->opaque;
 
-    if (!qio_channel_has_feature(s->ioc,
-                                 QIO_CHANNEL_FEATURE_FD_PASS)) {
-        return -1;
-    }
     /* clear old pending fd array */
     g_free(s->write_msgfds);
     s->write_msgfds = NULL;
+    s->write_msgfds_num = 0;
+
+    if (!s->connected ||
+        !qio_channel_has_feature(s->ioc,
+                                 QIO_CHANNEL_FEATURE_FD_PASS)) {
+        return -1;
+    }
 
     if (num) {
         s->write_msgfds = g_new(int, num);
@@ -2842,6 +2853,35 @@ static GSource *tcp_chr_add_watch(CharDriverState *chr, GIOCondition cond)
     return qio_channel_create_watch(s->ioc, cond);
 }
 
+static void tcp_chr_free_connection(CharDriverState *chr)
+{
+    TCPCharDriver *s = chr->opaque;
+    int i;
+
+    if (!s->connected) {
+        return;
+    }
+
+    if (s->read_msgfds_num) {
+        for (i = 0; i < s->read_msgfds_num; i++) {
+            close(s->read_msgfds[i]);
+        }
+        g_free(s->read_msgfds);
+        s->read_msgfds = NULL;
+        s->read_msgfds_num = 0;
+    }
+
+    tcp_set_msgfds(chr, NULL, 0);
+    remove_fd_in_watch(chr);
+    object_unref(OBJECT(s->sioc));
+    s->sioc = NULL;
+    object_unref(OBJECT(s->ioc));
+    s->ioc = NULL;
+    g_free(chr->filename);
+    chr->filename = NULL;
+    s->connected = 0;
+}
+
 static void tcp_chr_disconnect(CharDriverState *chr)
 {
     TCPCharDriver *s = chr->opaque;
@@ -2850,18 +2890,12 @@ static void tcp_chr_disconnect(CharDriverState *chr)
         return;
     }
 
-    s->connected = 0;
+    tcp_chr_free_connection(chr);
+
     if (s->listen_ioc) {
         s->listen_tag = qio_channel_add_watch(
             QIO_CHANNEL(s->listen_ioc), G_IO_IN, tcp_chr_accept, chr, NULL);
     }
-    tcp_set_msgfds(chr, NULL, 0);
-    remove_fd_in_watch(chr);
-    object_unref(OBJECT(s->sioc));
-    s->sioc = NULL;
-    object_unref(OBJECT(s->ioc));
-    s->ioc = NULL;
-    g_free(chr->filename);
     chr->filename = SocketAddress_to_str("disconnected:", s->addr,
                                          s->is_listen, s->is_telnet);
     qemu_chr_be_event(chr, CHR_EVENT_CLOSED);
@@ -3138,20 +3172,54 @@ static gboolean tcp_chr_accept(QIOChannel *channel,
     return TRUE;
 }
 
+static int tcp_chr_wait_connected(CharDriverState *chr, Error **errp)
+{
+    TCPCharDriver *s = chr->opaque;
+    QIOChannelSocket *sioc;
+
+    /* It can't wait on s->connected, since it is set asynchronously
+     * in TLS and telnet cases, only wait for an accepted socket */
+    while (!s->ioc) {
+        if (s->is_listen) {
+            fprintf(stderr, "QEMU waiting for connection on: %s\n",
+                    chr->filename);
+            qio_channel_set_blocking(QIO_CHANNEL(s->listen_ioc), true, NULL);
+            tcp_chr_accept(QIO_CHANNEL(s->listen_ioc), G_IO_IN, chr);
+            qio_channel_set_blocking(QIO_CHANNEL(s->listen_ioc), false, NULL);
+        } else {
+            sioc = qio_channel_socket_new();
+            if (qio_channel_socket_connect_sync(sioc, s->addr, errp) < 0) {
+                object_unref(OBJECT(sioc));
+                return -1;
+            }
+            tcp_chr_new_client(chr, sioc);
+            object_unref(OBJECT(sioc));
+        }
+    }
+
+    return 0;
+}
+
+int qemu_chr_wait_connected(CharDriverState *chr, Error **errp)
+{
+    if (chr->chr_wait_connected) {
+        return chr->chr_wait_connected(chr, errp);
+    }
+
+    return 0;
+}
+
 static void tcp_chr_close(CharDriverState *chr)
 {
     TCPCharDriver *s = chr->opaque;
-    int i;
+
+    tcp_chr_free_connection(chr);
 
     if (s->reconnect_timer) {
         g_source_remove(s->reconnect_timer);
         s->reconnect_timer = 0;
     }
     qapi_free_SocketAddress(s->addr);
-    remove_fd_in_watch(chr);
-    if (s->ioc) {
-        object_unref(OBJECT(s->ioc));
-    }
     if (s->listen_tag) {
         g_source_remove(s->listen_tag);
         s->listen_tag = 0;
@@ -3159,17 +3227,8 @@ static void tcp_chr_close(CharDriverState *chr)
     if (s->listen_ioc) {
         object_unref(OBJECT(s->listen_ioc));
     }
-    if (s->read_msgfds_num) {
-        for (i = 0; i < s->read_msgfds_num; i++) {
-            close(s->read_msgfds[i]);
-        }
-        g_free(s->read_msgfds);
-    }
     if (s->tls_creds) {
         object_unref(OBJECT(s->tls_creds));
-    }
-    if (s->write_msgfds_num) {
-        g_free(s->write_msgfds);
     }
     g_free(s);
     qemu_chr_be_event(chr, CHR_EVENT_CLOSED);
@@ -4198,14 +4257,26 @@ static CharDriverState *qmp_chardev_open_file(const char *id,
     ChardevFile *file = backend->u.file.data;
     ChardevCommon *common = qapi_ChardevFile_base(file);
     HANDLE out;
+    DWORD accessmode;
+    DWORD flags;
 
     if (file->has_in) {
         error_setg(errp, "input file not supported");
         return NULL;
     }
 
-    out = CreateFile(file->out, GENERIC_WRITE, FILE_SHARE_READ, NULL,
-                     OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (file->has_append && file->append) {
+        /* Append to file if it already exists. */
+        accessmode = FILE_GENERIC_WRITE & ~FILE_WRITE_DATA;
+        flags = OPEN_ALWAYS;
+    } else {
+        /* Truncate file if it already exists. */
+        accessmode = GENERIC_WRITE;
+        flags = CREATE_ALWAYS;
+    }
+
+    out = CreateFile(file->out, accessmode, FILE_SHARE_READ, NULL, flags,
+                     FILE_ATTRIBUTE_NORMAL, NULL);
     if (out == INVALID_HANDLE_VALUE) {
         error_setg(errp, "open %s failed", file->out);
         return NULL;
@@ -4392,6 +4463,7 @@ static CharDriverState *qmp_chardev_open_socket(const char *id,
     s->addr = QAPI_CLONE(SocketAddress, sock->addr);
 
     chr->opaque = s;
+    chr->chr_wait_connected = tcp_chr_wait_connected;
     chr->chr_write = tcp_chr_write;
     chr->chr_sync_read = tcp_chr_sync_read;
     chr->chr_close = tcp_chr_close;
@@ -4415,32 +4487,30 @@ static CharDriverState *qmp_chardev_open_socket(const char *id,
         s->reconnect_time = reconnect;
     }
 
-    sioc = qio_channel_socket_new();
     if (s->reconnect_time) {
+        sioc = qio_channel_socket_new();
         qio_channel_socket_connect_async(sioc, s->addr,
                                          qemu_chr_socket_connected,
                                          chr, NULL);
-    } else if (s->is_listen) {
-        if (qio_channel_socket_listen_sync(sioc, s->addr, errp) < 0) {
-            goto error;
-        }
-        s->listen_ioc = sioc;
-        if (is_waitconnect) {
-            fprintf(stderr, "QEMU waiting for connection on: %s\n",
-                    chr->filename);
-            tcp_chr_accept(QIO_CHANNEL(s->listen_ioc), G_IO_IN, chr);
-        }
-        qio_channel_set_blocking(QIO_CHANNEL(s->listen_ioc), false, NULL);
-        if (!s->ioc) {
-            s->listen_tag = qio_channel_add_watch(
-                QIO_CHANNEL(s->listen_ioc), G_IO_IN, tcp_chr_accept, chr, NULL);
-        }
     } else {
-        if (qio_channel_socket_connect_sync(sioc, s->addr, errp) < 0) {
+        if (s->is_listen) {
+            sioc = qio_channel_socket_new();
+            if (qio_channel_socket_listen_sync(sioc, s->addr, errp) < 0) {
+                goto error;
+            }
+            s->listen_ioc = sioc;
+            if (is_waitconnect &&
+                qemu_chr_wait_connected(chr, errp) < 0) {
+                goto error;
+            }
+            if (!s->ioc) {
+                s->listen_tag = qio_channel_add_watch(
+                    QIO_CHANNEL(s->listen_ioc), G_IO_IN,
+                    tcp_chr_accept, chr, NULL);
+            }
+        } else if (qemu_chr_wait_connected(chr, errp) < 0) {
             goto error;
         }
-        tcp_chr_new_client(chr, sioc);
-        object_unref(OBJECT(sioc));
     }
 
     return chr;

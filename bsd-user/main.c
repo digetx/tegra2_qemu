@@ -17,6 +17,7 @@
  *  along with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 #include "qemu/osdep.h"
+#include "qemu-version.h"
 #include <machine/trap.h>
 
 #include "qapi/error.h"
@@ -171,7 +172,7 @@ void cpu_loop(CPUX86State *env)
     //target_siginfo_t info;
 
     for(;;) {
-        trapnr = cpu_x86_exec(cs);
+        trapnr = cpu_exec(cs);
         switch(trapnr) {
         case 0x80:
             /* syscall from int $0x80 */
@@ -512,7 +513,7 @@ void cpu_loop(CPUSPARCState *env)
     //target_siginfo_t info;
 
     while (1) {
-        trapnr = cpu_sparc_exec(cs);
+        trapnr = cpu_exec(cs);
 
         switch (trapnr) {
 #ifndef TARGET_SPARC64
@@ -667,7 +668,8 @@ void cpu_loop(CPUSPARCState *env)
 
 static void usage(void)
 {
-    printf("qemu-" TARGET_NAME " version " QEMU_VERSION ", Copyright (c) 2003-2008 Fabrice Bellard\n"
+    printf("qemu-" TARGET_NAME " version " QEMU_VERSION QEMU_PKGVERSION
+           ", " QEMU_COPYRIGHT "\n"
            "usage: qemu-" TARGET_NAME " [options] program [arguments...]\n"
            "BSD CPU emulator (compiled for %s emulation)\n"
            "\n"

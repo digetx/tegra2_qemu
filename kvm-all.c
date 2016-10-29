@@ -1047,6 +1047,14 @@ void kvm_irqchip_commit_routes(KVMState *s)
 {
     int ret;
 
+    if (kvm_gsi_direct_mapping()) {
+        return;
+    }
+
+    if (!kvm_gsi_routing_enabled()) {
+        return;
+    }
+
     s->irq_routes->flags = 0;
     trace_kvm_irqchip_commit_routes();
     ret = kvm_vm_ioctl(s, KVM_SET_GSI_ROUTING, s->irq_routes);
@@ -2135,7 +2143,7 @@ void kvm_device_access(int fd, int group, uint64_t attr,
     if (err < 0) {
         error_report("KVM_%s_DEVICE_ATTR failed: %s",
                      write ? "SET" : "GET", strerror(-err));
-        error_printf("Group %d attr 0x%016" PRIx64, group, attr);
+        error_printf("Group %d attr 0x%016" PRIx64 "\n", group, attr);
         abort();
     }
 }
