@@ -53,7 +53,7 @@ struct __attribute__((packed, aligned(1))) trace_pkt_rw {
     uint32_t cpu_id;
 };
 
-#define PACKET_TRACE_IRQ 0x22222222
+#define PACKET_TRACE_IRQ 0x22223333
 struct __attribute__((packed, aligned(1))) trace_pkt_irq {
     uint32_t magic;
     uint32_t hwaddr;
@@ -62,38 +62,56 @@ struct __attribute__((packed, aligned(1))) trace_pkt_irq {
     uint32_t time;
     uint32_t cpu_pc;
     uint32_t cpu_id;
+    uint64_t __pad;
 };
 
-#define PACKET_TRACE_TXT 0x33333333
+#define PACKET_TRACE_TXT 0x33334444
 struct __attribute__((packed, aligned(1))) trace_pkt_txt {
     uint32_t magic;
     uint32_t text_sz;
+    uint64_t __pad0;
+    uint64_t __pad1;
+    uint64_t __pad2;
+    uint32_t __pad4;
 //     uint32_t time;
     char text[1]; // \0
 };
 
-#define PACKET_TRACE_CDMA 0x44444444
+#define PACKET_TRACE_CDMA 0x44445555
 struct __attribute__((packed, aligned(1))) trace_pkt_cdma {
     uint32_t magic;
     uint32_t time;
     uint32_t data;
     uint32_t is_gather;
     uint32_t ch_id;
+    uint64_t __pad0;
+    uint64_t __pad1;
 };
 
 static int msgsock = -1;
+static QemuMutex send_mutex;
 
 int tegra_send_all(int fd, const void *_buf, int len1)
 {
     int ret, len;
     const uint8_t *buf = _buf;
+    bool try_again = true;
 
+    qemu_mutex_lock(&send_mutex);
+retry:
     len = len1;
     while (len > 0) {
         ret = write(fd, buf, len);
         if (ret < 0) {
-            if (errno != EINTR && errno != EAGAIN)
+            if (errno != EINTR && errno != EAGAIN) {
+                if (try_again) {
+                    tegra_trace_init();
+                    try_again = false;
+                    goto retry;
+                }
+                qemu_mutex_unlock(&send_mutex);
                 return -1;
+            }
         } else if (ret == 0) {
             break;
         } else {
@@ -101,6 +119,7 @@ int tegra_send_all(int fd, const void *_buf, int len1)
             len -= ret;
         }
     }
+    qemu_mutex_unlock(&send_mutex);
     return len1 - len;
 }
 
@@ -251,6 +270,7 @@ static void * trace_viewer_cmd_handler(void *arg)
 void tegra_trace_init(void)
 {
 #ifdef TEGRA_TRACE
+    SocketAddress *saddr;
     QemuThread trace_cmd_thread;
     static int sock = -1;
 
@@ -262,12 +282,15 @@ void tegra_trace_init(void)
         goto WAIT;
     }
 
+    qemu_mutex_init(&send_mutex);
+
 #ifdef LOCAL_SOCKET
-    sock = unix_listen(SOCKET_FILE, NULL, 0, &error_abort);
+    saddr = socket_parse("unix:" SOCKET_FILE, &error_abort);
 #else
-    sock = inet_listen("0.0.0.0:19191", NULL, 0, SOCK_STREAM, 0, &error_abort);
+    saddr = socket_parse("0.0.0.0:19191", &error_abort);
 #endif // LOCAL_SOCKET
 
+    sock = socket_listen(saddr, &error_abort);
     socket_set_fast_reuse(sock);
 
     if (listen(sock, 1) < 0) {
