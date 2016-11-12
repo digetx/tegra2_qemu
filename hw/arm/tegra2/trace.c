@@ -94,11 +94,12 @@ static QemuMutex send_mutex;
 int tegra_send_all(int fd, const void *_buf, int len1)
 {
     int ret, len;
-    const uint8_t *buf = _buf;
+    const uint8_t *buf;
     bool try_again = true;
 
     qemu_mutex_lock(&send_mutex);
 retry:
+    buf = _buf;
     len = len1;
     while (len > 0) {
         ret = write(fd, buf, len);
