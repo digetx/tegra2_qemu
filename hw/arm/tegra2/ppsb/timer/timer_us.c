@@ -116,7 +116,7 @@ static void tegra_timer_us_priv_realize(DeviceState *dev, Error **errp)
                           "tegra.timer_us", TEGRA_TMRUS_SIZE);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
-    s->ptimer = ptimer_init(NULL);
+    s->ptimer = ptimer_init(NULL, PTIMER_POLICY_DEFAULT);
     ptimer_set_freq(s->ptimer, 1000000 * SCALE);
     ptimer_set_limit(s->ptimer, 0xffffffff, 1);
 }

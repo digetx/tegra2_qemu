@@ -649,7 +649,7 @@ static void tegra_flow_priv_realize(DeviceState *dev, Error **errp)
         arg->s = s;
         arg->cpu_id = i;
 
-        s->ptimer[i] = ptimer_init(bh);
+        s->ptimer[i] = ptimer_init(bh, PTIMER_POLICY_DEFAULT);
         ptimer_set_freq(s->ptimer[i], 1000000);
     }
 }

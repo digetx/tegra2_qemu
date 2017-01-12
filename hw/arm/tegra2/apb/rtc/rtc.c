@@ -30,6 +30,13 @@
 #define TEGRA_RTC(obj) OBJECT_CHECK(tegra_rtc, (obj), TYPE_TEGRA_RTC)
 #define DEFINE_REG32(reg) reg##_t reg
 
+#define PTIMER_POLICY                       \
+    (PTIMER_POLICY_WRAP_AFTER_ONE_PERIOD |  \
+     PTIMER_POLICY_CONTINUOUS_TRIGGER    |  \
+     PTIMER_POLICY_NO_IMMEDIATE_TRIGGER  |  \
+     PTIMER_POLICY_NO_IMMEDIATE_RELOAD   |  \
+     PTIMER_POLICY_NO_COUNTER_ROUND_DOWN)
+
 typedef struct tegra_rtc_state {
     SysBusDevice parent_obj;
 
@@ -351,32 +358,32 @@ static void tegra_rtc_priv_realize(DeviceState *dev, Error **errp)
                           "tegra.rtc", TEGRA_RTC_SIZE);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
-    s->p_rtc_sec = ptimer_init(NULL);
+    s->p_rtc_sec = ptimer_init(NULL, PTIMER_POLICY);
     ptimer_set_freq(s->p_rtc_sec, 1);
     ptimer_set_limit(s->p_rtc_sec, 0xffffffff, 1);
 
-    s->p_rtc_ms = ptimer_init(NULL);
+    s->p_rtc_ms = ptimer_init(NULL, PTIMER_POLICY);
     ptimer_set_freq(s->p_rtc_ms, 1000);
     ptimer_set_limit(s->p_rtc_ms, 0x3ff, 1);
 
     bh = qemu_bh_new(tegra_rtc_sec_alarm0, s);
-    s->p_sec_alarm0 = ptimer_init(bh);
+    s->p_sec_alarm0 = ptimer_init(bh, PTIMER_POLICY);
     ptimer_set_freq(s->p_sec_alarm0, 1);
 
     bh = qemu_bh_new(tegra_rtc_sec_alarm1, s);
-    s->p_sec_alarm1 = ptimer_init(bh);
+    s->p_sec_alarm1 = ptimer_init(bh, PTIMER_POLICY);
     ptimer_set_freq(s->p_sec_alarm1, 1);
 
     bh = qemu_bh_new(tegra_rtc_ms_alarm, s);
-    s->p_ms_alarm = ptimer_init(bh);
+    s->p_ms_alarm = ptimer_init(bh, PTIMER_POLICY);
     ptimer_set_freq(s->p_ms_alarm, 1000);
 
     bh = qemu_bh_new(tegra_rtc_sec_cnt_alarm, s);
-    s->p_sec_cnt_alarm = ptimer_init(bh);
+    s->p_sec_cnt_alarm = ptimer_init(bh, PTIMER_POLICY);
     ptimer_set_freq(s->p_sec_cnt_alarm, 1);
 
     bh = qemu_bh_new(tegra_rtc_ms_cnt_alarm, s);
-    s->p_ms_cnt_alarm = ptimer_init(bh);
+    s->p_ms_cnt_alarm = ptimer_init(bh, PTIMER_POLICY);
     ptimer_set_freq(s->p_ms_cnt_alarm, 1000);
 }
 

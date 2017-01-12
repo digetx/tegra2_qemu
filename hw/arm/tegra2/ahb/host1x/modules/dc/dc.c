@@ -310,7 +310,7 @@ static void tegra_dc_priv_realize(DeviceState *dev, Error **errp)
     init_window(&s->win_c, WIN_C_CAPS);
 
     s->bh = qemu_bh_new(tegra_dc_vblank, s);
-    s->ptimer = ptimer_init(s->bh);
+    s->ptimer = ptimer_init(s->bh, PTIMER_POLICY_DEFAULT);
     ptimer_set_freq(s->ptimer, s->disp_refresh_rate);
 
     s->module.reg_write = tegra_dc_module_write;

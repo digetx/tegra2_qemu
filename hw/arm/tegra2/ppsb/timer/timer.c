@@ -32,6 +32,13 @@
 
 #define SCALE   1
 
+#define PTIMER_POLICY                       \
+    (PTIMER_POLICY_WRAP_AFTER_ONE_PERIOD |  \
+     PTIMER_POLICY_CONTINUOUS_TRIGGER    |  \
+     PTIMER_POLICY_NO_IMMEDIATE_TRIGGER  |  \
+     PTIMER_POLICY_NO_IMMEDIATE_RELOAD   |  \
+     PTIMER_POLICY_NO_COUNTER_ROUND_DOWN)
+
 static const VMStateDescription vmstate_tegra_timer = {
     .name = "tegra.timer",
     .version_id = 1,
@@ -148,7 +155,7 @@ static void tegra_timer_priv_realize(DeviceState *dev, Error **errp)
                           "tegra.timer", 0x8);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
-    s->ptimer = ptimer_init(bh);
+    s->ptimer = ptimer_init(bh, PTIMER_POLICY);
     ptimer_set_freq(s->ptimer, 1000000 * SCALE);
 }
 
