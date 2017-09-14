@@ -433,7 +433,7 @@ void HELPER(wfi)(CPUARMState *env)
     cpu_loop_exit(cs);
 }
 
-void HELPER(wfe)(CPUARMState *env)
+void __attribute__((weak)) HELPER(wfe)(CPUARMState *env)
 {
     /* This is a hint instruction that is semantically different
      * from YIELD even though we currently implement it identically.
@@ -455,7 +455,7 @@ void HELPER(yield)(CPUARMState *env)
      * If we wanted to more completely model WFE/SEV so we don't busy
      * spin unnecessarily we would need to do something more involved.
      */
-    g_assert(!parallel_cpus);
+//     g_assert(!parallel_cpus);
 
     /* This is a non-trappable hint instruction that generally indicates
      * that the guest is currently busy-looping. Yield control back to the

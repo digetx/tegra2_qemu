@@ -708,6 +708,8 @@ struct ARMCPU {
 
     /* Used to synchronize KVM and QEMU in-kernel device levels */
     uint8_t device_irq_level;
+
+    hwaddr (*translate_addr)(hwaddr addr, int access_type);
 };
 
 static inline ARMCPU *arm_env_get_cpu(CPUARMState *env)
@@ -752,6 +754,7 @@ ARMCPU *cpu_arm_init(const char *cpu_model);
 target_ulong do_arm_semihosting(CPUARMState *env);
 void aarch64_sync_32_to_64(CPUARMState *env);
 void aarch64_sync_64_to_32(CPUARMState *env);
+void __arm_cpu_reset(CPUState *s);
 
 static inline bool is_a64(CPUARMState *env)
 {
@@ -1183,6 +1186,8 @@ FIELD(V7M_MPU_CTRL, PRIVDEFENA, 2, 1)
  * mapping in linux-user/elfload.c:get_elf_hwcap().
  */
 enum arm_features {
+    ARM_FEATURE_NOCP15, /* ARM7TDMI, ARM7TDMI-S, ARM7EJ-S, and ARM9TDMI cores do not have a CP15 */
+    ARM_FEATURE_ABORT_BU, /* base updated abort model, e.g. ARMxTDMI */
     ARM_FEATURE_VFP,
     ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
     ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */

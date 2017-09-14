@@ -4513,10 +4513,10 @@ static void gen_nop_hint(DisasContext *s, int val)
         s->is_jmp = DISAS_WFI;
         break;
     case 2: /* wfe */
-        if (!parallel_cpus) {
+//         if (!parallel_cpus) {
             gen_set_pc_im(s, s->pc);
             s->is_jmp = DISAS_WFE;
-        }
+//         }
         break;
     case 4: /* sev */
     case 5: /* sevl */
