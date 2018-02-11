@@ -19,6 +19,7 @@
 
 #include "qemu/osdep.h"
 #include "qemu/thread.h"
+#include "qemu/main-loop.h"
 
 #include "host1x_fifo.h"
 
@@ -56,10 +57,15 @@ unsigned int host1x_get_fifo_entries_nb(struct host1x_fifo *fifo)
 
 void host1x_fifo_push(struct host1x_fifo *fifo, uint32_t data)
 {
+    bool lock = false;
     qemu_mutex_lock(&fifo->mutex);
 
-    while (fifo->entries_nb == fifo->size)
+    while (fifo->entries_nb == fifo->size) {
+        qemu_mutex_unlock_iothread();
+        lock = true;
+
         qemu_cond_wait(&fifo->free_cond, &fifo->mutex);
+    }
 
     fifo->data[fifo->last++] = data;
     fifo->entries_nb++;
@@ -68,6 +74,10 @@ void host1x_fifo_push(struct host1x_fifo *fifo, uint32_t data)
         fifo->last = 0;
 
     qemu_mutex_unlock(&fifo->mutex);
+
+    if (lock) {
+        qemu_mutex_lock_iothread();
+    }
 }
 
 uint32_t host1x_fifo_pop(struct host1x_fifo *fifo)

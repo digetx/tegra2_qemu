@@ -18,6 +18,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "qemu/main-loop.h"
 #include "sysemu/dma.h"
 
 #include "host1x_cdma.h"
@@ -123,6 +124,8 @@ void process_cmd_buf(struct host1x_dma_gather *gather)
 //         TPRINT("cdma=%d inlined=%d get=0x%X cmd=0x%08X\n",
 //                cdma->ch_id, gather->inlined, gather->get - 1, cmd);
 
+        qemu_mutex_lock_iothread();
+
         switch (opcode) {
         case SETCL:
         {
@@ -165,8 +168,10 @@ void process_cmd_buf(struct host1x_dma_gather *gather)
             g_assert(dma_get_is_valid(gather));
             g_assert(dma_range_is_valid(gather));
 
-            if (cdma_stopped(gather))
+            if (cdma_stopped(gather)) {
+                qemu_mutex_unlock_iothread();
                 return;
+            }
 
             gather_inlined.get = 0;
             gather_inlined.inlined = 1;
@@ -177,15 +182,19 @@ void process_cmd_buf(struct host1x_dma_gather *gather)
             TPRINT("gather base=0x%08X count=%d insert=%d\n",
                    gather_inlined.base << 2, op.count, op.insert);
 
-            g_assert(op.count != 0);
+            if (op.count == 0)
+                break;
 
             if (!dma_get_is_valid(&gather_inlined))
                 break;
 
             if (op.insert)
                 module_feed(&gather_inlined, op.offset, op.count, op.incr);
-             else
+            else {
+                qemu_mutex_unlock_iothread();
                 process_cmd_buf(&gather_inlined);
+                qemu_mutex_lock_iothread();
+            }
             break;
         }
         case EXTEND:
@@ -215,8 +224,10 @@ void process_cmd_buf(struct host1x_dma_gather *gather)
 
             cdma->gather.get = op.offset << 2;
 
-            if (gather->inlined)
+            if (gather->inlined) {
+                qemu_mutex_unlock_iothread();
                 return;
+            }
             break;
         }
         case CHDONE:
@@ -226,5 +237,7 @@ void process_cmd_buf(struct host1x_dma_gather *gather)
                    __func__, opcode, cmd);
             g_assert_not_reached();
         }
+
+        qemu_mutex_unlock_iothread();
     }
 }
