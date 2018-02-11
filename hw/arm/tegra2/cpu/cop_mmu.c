@@ -137,7 +137,7 @@ static void tegra_cop_mmu_priv_write(void *opaque, hwaddr offset,
     tlb_flush(current_cpu);
 
     if (tcg_enabled()) {
-        if (tcg_ctx.gen_next_op_idx != OPC_BUF_SIZE) {
+        if (tcg_ctx->gen_next_op_idx != OPC_BUF_SIZE) {
             tcg_gen_exit_tb(0);
         }
     }

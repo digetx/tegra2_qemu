@@ -155,14 +155,10 @@ static void cop_memory_region_add_alias(MemoryRegion *mr, const char *name,
 
 static void tegra2_create_cpus(void)
 {
-    ObjectClass *cpu_oc;
     int i;
 
-    cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, "cortex-a9");
-    assert(cpu_oc != NULL);
-
     for (i = 0; i < TEGRA2_A9_NCORES; i++) {
-        Object *cpuobj = object_new(object_class_get_name(cpu_oc));
+        Object *cpuobj = object_new(ARM_CPU_TYPE_NAME("cortex-a9"));
 
         object_property_set_int(cpuobj, TEGRA_ARM_PERIF_BASE, "reset-cbar", &error_abort);
         object_property_set_bool(cpuobj, false, "has_el3", &error_abort);
@@ -172,10 +168,7 @@ static void tegra2_create_cpus(void)
     }
 
     /* AVP(COP) Audio Video Processor */
-    cpu_oc = cpu_class_by_name(TYPE_ARM_CPU, "arm7tdmi");
-    assert(cpu_oc != NULL);
-
-    Object *cpuobj = object_new(object_class_get_name(cpu_oc));
+    Object *cpuobj = object_new(ARM_CPU_TYPE_NAME("arm7tdmi"));
     object_property_set_bool(cpuobj, true, "start-powered-off", &error_abort);
     object_property_set_bool(cpuobj, true, "realized", &error_abort);
 
@@ -635,7 +628,10 @@ static void tegra2_machine_init(MachineClass *mc)
     mc->desc = "ARM NVIDIA Tegra2";
     mc->init = tegra2_init;
     mc->reset = tegra2_reset;
+    mc->default_cpus = TEGRA2_NCPUS;
+    mc->min_cpus = TEGRA2_NCPUS;
     mc->max_cpus = TEGRA2_NCPUS;
+    mc->ignore_memory_transaction_failures = true;
 }
 
 DEFINE_MACHINE("tegra2-alpha", tegra2_machine_init)
