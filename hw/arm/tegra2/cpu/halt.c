@@ -74,6 +74,10 @@ void tegra_cpu_run(int cpu_id)
 
     cpu_reset_interrupt(cs, CPU_INTERRUPT_HALT);
     cpu_resume(cs);
+
+    if (cs->halted) {
+        cpu_interrupt(cs, CPU_INTERRUPT_EXITTB);
+    }
 }
 
 void tegra_cpu_halt(int cpu_id)
