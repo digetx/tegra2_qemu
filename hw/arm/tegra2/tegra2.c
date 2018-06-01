@@ -28,6 +28,7 @@
 #include "hw/arm/arm.h"
 #include "hw/loader.h"
 #include "hw/char/serial.h"
+#include "hw/sd/sdhci.h"
 #include "sysemu/sysemu.h"
 #include "sysemu/cpus.h"
 
@@ -364,13 +365,28 @@ static void tegra2_init(MachineState *machine)
                                          TEGRA_RTC_BASE, DIRQ(INT_RTC));
 
     /* SDHC4 controller */
-    tegra_sdhci4_dev = qdev_create(NULL, "generic-sdhci");
-    qdev_prop_set_uint32(tegra_sdhci4_dev, "capareg", 0x5780A81);
-    qdev_init_nofail(tegra_sdhci4_dev);
-    sysbus_mmio_map(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, TEGRA_SDMMC4_BASE);
-    sysbus_connect_irq(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, DIRQ(INT_SDMMC4));
-//     tegra_sdhci4_dev = sysbus_create_simple("tegra.sdhci",
-//                                             TEGRA_SDMMC4_BASE, DIRQ(INT_SDMMC4));
+    {
+        DeviceState *carddev;
+        BlockBackend *blk;
+        DriveInfo *di;
+
+        tegra_sdhci4_dev = qdev_create(NULL, TYPE_SYSBUS_SDHCI);
+        qdev_prop_set_uint32(tegra_sdhci4_dev, "capareg", 0x5780A81);
+        qdev_init_nofail(tegra_sdhci4_dev);
+
+        sysbus_mmio_map(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, TEGRA_SDMMC4_BASE);
+        sysbus_connect_irq(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, DIRQ(INT_SDMMC4));
+
+        di = drive_get(IF_SD, 0, 0);
+        blk = di ? blk_by_legacy_dinfo(di) : NULL;
+        carddev = qdev_create(qdev_get_child_bus(tegra_sdhci4_dev, "sd-bus"), TYPE_SD_CARD);
+        qdev_prop_set_drive(carddev, "drive", blk, &error_abort);
+        qdev_prop_set_bit(carddev, "emmc", true);
+        qdev_init_nofail(carddev);
+
+//         tegra_sdhci4_dev = sysbus_create_simple("tegra.sdhci",
+//                                                 TEGRA_SDMMC4_BASE, DIRQ(INT_SDMMC4));
+    }
 
     /* Timer1 */
     tegra_timer1_dev = sysbus_create_simple("tegra.timer",
