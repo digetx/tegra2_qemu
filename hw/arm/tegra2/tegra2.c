@@ -381,7 +381,7 @@ static void tegra2_init(MachineState *machine)
         blk = di ? blk_by_legacy_dinfo(di) : NULL;
         carddev = qdev_create(qdev_get_child_bus(tegra_sdhci4_dev, "sd-bus"), TYPE_SD_CARD);
         qdev_prop_set_drive(carddev, "drive", blk, &error_abort);
-        qdev_prop_set_bit(carddev, "emmc", true);
+        qdev_prop_set_bit(carddev, "emmc", false);
         qdev_init_nofail(carddev);
 
 //         tegra_sdhci4_dev = sysbus_create_simple("tegra.sdhci",
