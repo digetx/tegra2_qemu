@@ -17,8 +17,6 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef TEGRA_TRACE
-
 /* WARNING: HACK */
 #include "qom/object.h"
 #include "hw/irq.h"
@@ -29,6 +27,8 @@ struct IRQState {
     void *opaque;
     int n;
 };
+
+#ifdef TEGRA_TRACE
 
 typedef union tegra_trace_rw_u {
     struct {
@@ -68,7 +68,7 @@ static inline uint32_t ttrw(int rw, int c, int r, int s)
 #define TRACE_CDMA_START(c)                 tegra_trace_cdma(0xA << 28, 0, c)
 #define TRACE_CDMA_STOP(c)                  tegra_trace_cdma(0xB << 28, 0, c)
 #else
-#define TRACE_READ_MEM(a, o, v)             do {(void)(a); (void)(o); (void)(v); (void)(s);} while (0)
+#define TRACE_READ_MEM(a, o, v, s)          do {(void)(a); (void)(o); (void)(v); (void)(s);} while (0)
 #define TRACE_WRITE_MEM(a, o, v, s)         do {(void)(a); (void)(o); (void)(v); (void)(s);} while (0)
 #define TRACE_READ(a, o, v)                 do {(void)(a); (void)(o); (void)(v);} while (0)
 #define TRACE_WRITE(a, o, v, n)             do {(void)(a); (void)(o); (void)(v); (void)(n);} while (0)
