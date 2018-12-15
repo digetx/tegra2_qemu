@@ -133,7 +133,7 @@ static uint64_t tegra_gr2d_priv_read(void *opaque, hwaddr offset, unsigned size)
 {
     tegra_gr2d *s = opaque;
 
-    return host1x_module_read(&s->gr2d_module, offset >> 2);
+    return host1x_module_read(&s->gr2d_module[0], offset >> 2);
 }
 
 static void tegra_gr2d_priv_write(void *opaque, hwaddr offset,
@@ -141,7 +141,7 @@ static void tegra_gr2d_priv_write(void *opaque, hwaddr offset,
 {
     tegra_gr2d *s = opaque;
 
-    host1x_module_write(&s->gr2d_module, offset >> 2, value);
+    host1x_module_write(&s->gr2d_module[0], offset >> 2, value);
 }
 
 static void tegra_gr2d_priv_reset(DeviceState *dev)
@@ -252,17 +252,45 @@ static void tegra_gr2d_priv_realize(DeviceState *dev, Error **errp)
                           "tegra.gr2d", SZ_256K);
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 
-    s->gr2d_module.class_id = 0x51,
-    s->gr2d_module.reg_write = gr2d_write;
-    s->gr2d_module.reg_read = gr2d_read;
+    s->gr2d_module[0].class_id = 0x50,
+    s->gr2d_module[0].reg_write = gr2d_write;
+    s->gr2d_module[0].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_module[0], &s->regs);
 
-    register_host1x_bus_module(&s->gr2d_module, &s->regs);
+    s->gr2d_module[1].class_id = 0x51,
+    s->gr2d_module[1].reg_write = gr2d_write;
+    s->gr2d_module[1].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_module[1], &s->regs);
 
-    s->gr2d_sb_module.class_id = 0x52,
-    s->gr2d_sb_module.reg_write = gr2d_write;
-    s->gr2d_sb_module.reg_read = gr2d_read;
+    s->gr2d_module[2].class_id = 0x54,
+    s->gr2d_module[2].reg_write = gr2d_write;
+    s->gr2d_module[2].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_module[2], &s->regs);
 
-    register_host1x_bus_module(&s->gr2d_sb_module, &s->regs);
+    s->gr2d_module[3].class_id = 0x55,
+    s->gr2d_module[3].reg_write = gr2d_write;
+    s->gr2d_module[3].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_module[3], &s->regs);
+
+    s->gr2d_module[4].class_id = 0x56,
+    s->gr2d_module[4].reg_write = gr2d_write;
+    s->gr2d_module[4].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_module[4], &s->regs);
+
+    s->gr2d_sb_module[0].class_id = 0x52,
+    s->gr2d_sb_module[0].reg_write = gr2d_write;
+    s->gr2d_sb_module[0].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_sb_module[0], &s->regs);
+
+    s->gr2d_sb_module[1].class_id = 0x58,
+    s->gr2d_sb_module[1].reg_write = gr2d_write;
+    s->gr2d_sb_module[1].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_sb_module[1], &s->regs);
+
+    s->gr2d_sb_module[2].class_id = 0x5a,
+    s->gr2d_sb_module[2].reg_write = gr2d_write;
+    s->gr2d_sb_module[2].reg_read = gr2d_read;
+    register_host1x_bus_module(&s->gr2d_sb_module[2], &s->regs);
 }
 
 static void tegra_gr2d_class_init(ObjectClass *klass, void *data)

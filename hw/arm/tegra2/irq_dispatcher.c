@@ -64,13 +64,13 @@ static void tegra_irq_dispatcher_set_irq_gic(void *opaque, int irq, int level)
         level |= s->cpu_irq_lic_lvl;
     }
 
-    if (level && !tegra_cpu_is_powergated(cpu_id)) {
-        tegra_flow_on_irq(cpu_id);
-    }
-
 //     TPRINT("%s cpu=%d irq=%d lvl=%d\n", __func__, cpu_id, irq, level);
 
     qemu_set_irq(s->cpu_irqs[cpu_id][ARM_CPU_IRQ], level);
+
+    if (level && !tegra_cpu_is_powergated(cpu_id)) {
+        tegra_flow_on_irq(cpu_id);
+    }
 }
 
 static void tegra_irq_dispatcher_set_cpu_irq_lic(void *opaque, int irq, int level)
@@ -100,11 +100,11 @@ static void tegra_irq_dispatcher_set_cop_irq_lic(void *opaque, int irq, int leve
 //     TPRINT("%s irq=%d type=%s lvl=%d\n",
 //            __func__, irq, irq_type ? "FIQ":"IRQ", level);
 
+    qemu_set_irq(s->cop_irqs[irq_type], level);
+
     if (level) {
         tegra_flow_on_irq(TEGRA2_COP);
     }
-
-    qemu_set_irq(s->cop_irqs[irq_type], level);
 }
 
 static void tegra_irq_dispatcher_realize(DeviceState *dev, Error **errp)

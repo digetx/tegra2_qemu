@@ -65,6 +65,7 @@ static int tegra_dc_to_pixman(int format)
     case 17: // YUV422
         g_assert_not_reached();
     case 18: // YCbCr420P
+	return -1;
         g_assert_not_reached();
     case 19: // YUV420P
         g_assert_not_reached();
@@ -164,6 +165,8 @@ uint32_t read_window(display_window *win, uint32_t offset, int st)
 static void update_window_surface(display_window *win)
 {
     uint32_t starting_address = 0;
+
+    if (tegra_dc_to_pixman(win->regs_active.win_color_depth.color_depth) == -1) return;
 
     starting_address += win->regs_active.winbuf_start_addr.reg32;
 

@@ -215,7 +215,7 @@ static void __process_2d(gr2d_ctx *ctx)
         }
         break;
     default:
-        g_assert_not_reached();
+//         g_assert_not_reached();
         break;
     }
 }
@@ -223,12 +223,12 @@ static void __process_2d(gr2d_ctx *ctx)
 void process_2d(gr2d_ctx *ctx, int sb_g2)
 {
     /* TODO's */
-    g_assert(ctx->g2sb_g2cmdsel.g2output == G2OUTPUT_MEM);
-    g_assert(ctx->g2sb_g2cmdsel.vitrigger == DISABLED);
-    g_assert(ctx->g2sb_g2cmdsel.hosttrigger == DISABLED);
-    g_assert(ctx->g2sb_g2cmdsel.cbenable == DISABLED);
-
-    g_assert(sb_g2 == G2);
-
+//     g_assert(ctx->g2sb_g2cmdsel.g2output == G2OUTPUT_MEM);
+//     g_assert(ctx->g2sb_g2cmdsel.vitrigger == DISABLED);
+//     g_assert(ctx->g2sb_g2cmdsel.hosttrigger == DISABLED);
+//     g_assert(ctx->g2sb_g2cmdsel.cbenable == DISABLED);
+//
+// //     g_assert(sb_g2 == G2);
+//
     __process_2d(ctx);
 }

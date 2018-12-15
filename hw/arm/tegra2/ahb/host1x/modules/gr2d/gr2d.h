@@ -1193,8 +1193,8 @@ typedef struct tegra_gr2d_state {
 
     MemoryRegion iomem;
     gr2d_regs regs;
-    struct host1x_module gr2d_module;
-    struct host1x_module gr2d_sb_module;
+    struct host1x_module gr2d_module[5];
+    struct host1x_module gr2d_sb_module[3];
 } tegra_gr2d;
 
 void gr2d_write(struct host1x_module *module, uint32_t offset, uint32_t data);

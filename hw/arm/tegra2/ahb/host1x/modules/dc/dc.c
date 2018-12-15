@@ -86,6 +86,7 @@ static uint64_t tegra_dc_priv_read(void *opaque, hwaddr offset,
     case 0x0 ... 0x4C1:
         ret = dc_handler.read(&s->dc, offset);
         break;
+
     case 0x500 ... 0x80a:
         ret = s->dc.cmd_display_window_header.window_a_select;
         ret += s->dc.cmd_display_window_header.window_b_select;
@@ -111,6 +112,51 @@ static uint64_t tegra_dc_priv_read(void *opaque, hwaddr offset,
             break;
         }
         break;
+
+    case 0xa00 ... 0xbff:
+        offset -= 0xa00;
+
+        if (offset <= 0x138) {
+            offset = 0x500 + offset;
+        } else if (offset >= 0x180 && offset <= 0x199) {
+            offset = 0x700 + (offset - 0x180);
+        } else if (offset >= 0x1c0 && offset <= 0x1F9) {
+            offset = 0x800 + (offset - 0x1c0);
+        }
+
+        ret = read_window(&s->win_a, offset, st);
+        break;
+
+    case 0xc00 ... 0xdff:
+        offset -= 0xc00;
+
+        if (offset <= 0x138) {
+            offset = 0x500 + offset;
+        } else if (offset >= 0x180 && offset <= 0x199) {
+            offset = 0x700 + (offset - 0x180);
+        } else if (offset >= 0x1c0 && offset <= 0x1F9) {
+            offset = 0x800 + (offset - 0x1c0);
+        }
+
+        ret = read_window(&s->win_b, offset, st);
+        offset += 0x1000;
+        break;
+
+    case 0xe00 ... 0xfff:
+        offset -= 0xe00;
+
+        if (offset <= 0x138) {
+            offset = 0x500 + offset;
+        } else if (offset >= 0x180 && offset <= 0x199) {
+            offset = 0x700 + (offset - 0x180);
+        } else if (offset >= 0x1c0 && offset <= 0x1F9) {
+            offset = 0x800 + (offset - 0x1c0);
+        }
+
+        ret = read_window(&s->win_c, offset, st);
+        offset += 0x2000;
+        break;
+
     default:
         break;
     }
@@ -179,6 +225,7 @@ static void tegra_dc_priv_write(void *opaque, hwaddr offset,
                                 s->dc.disp_disp_active.v_disp_active);
         }
         break;
+
     case 0x500 ... 0x80a:
         if (s->dc.cmd_display_window_header.window_a_select) {
             TRACE_WRITE(s->iomem.addr, offset, old, value);
@@ -195,6 +242,52 @@ static void tegra_dc_priv_write(void *opaque, hwaddr offset,
             write_window(&s->win_c, offset, value, st);
         }
         break;
+
+    case 0xa00 ... 0xbff:
+        offset -= 0xa00;
+
+        if (offset <= 0x138) {
+            offset = 0x500 + offset;
+        } else if (offset >= 0x180 && offset <= 0x199) {
+            offset = 0x700 + (offset - 0x180);
+        } else if (offset >= 0x1c0 && offset <= 0x1F9) {
+            offset = 0x800 + (offset - 0x1c0);
+        }
+
+        TRACE_WRITE(s->iomem.addr, offset, old, value);
+        write_window(&s->win_a, offset, value, st);
+        break;
+
+    case 0xc00 ... 0xdff:
+        offset -= 0xc00;
+
+        if (offset <= 0x138) {
+            offset = 0x500 + offset;
+        } else if (offset >= 0x180 && offset <= 0x199) {
+            offset = 0x700 + (offset - 0x180);
+        } else if (offset >= 0x1c0 && offset <= 0x1F9) {
+            offset = 0x800 + (offset - 0x1c0);
+        }
+
+        TRACE_WRITE(s->iomem.addr, offset + 0x1000, old, value);
+        write_window(&s->win_b, offset, value, st);
+        break;
+
+    case 0xe00 ... 0xfff:
+        offset -= 0xe00;
+
+        if (offset <= 0x138) {
+            offset = 0x500 + offset;
+        } else if (offset >= 0x180 && offset <= 0x199) {
+            offset = 0x700 + (offset - 0x180);
+        } else if (offset >= 0x1c0 && offset <= 0x1F9) {
+            offset = 0x800 + (offset - 0x1c0);
+        }
+
+        TRACE_WRITE(s->iomem.addr, offset + 0x2000, old, value);
+        write_window(&s->win_c, offset, value, st);
+        break;
+
     default:
         TRACE_WRITE(s->iomem.addr, offset, old, value);
         break;

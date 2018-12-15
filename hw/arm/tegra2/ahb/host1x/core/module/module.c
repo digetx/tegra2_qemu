@@ -59,6 +59,9 @@ uint32_t host1x_module_read(struct host1x_module* module, uint32_t offset)
 void host1x_module_write(struct host1x_module* module,
                          uint32_t offset, uint32_t value)
 {
-    assert(module != NULL);
-    module->reg_write(module, offset, value);
+    if (module != NULL) {
+        module->reg_write(module, offset, value);
+    } else {
+        fprintf(stderr, "QEMU: HOST1X: CDMA: %s: module is NULL!!\n", __func__);
+    }
 }

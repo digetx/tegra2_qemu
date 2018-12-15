@@ -28,11 +28,10 @@
 static void gr3d_write(struct host1x_module *module,
                          uint32_t offset, uint32_t data)
 {
-//     TRACE_WRITE(module->class_id, offset, data, data);
+    TRACE_WRITE(module->class_id, offset, data, data);
 
     switch (offset) {
     case 0:
-        TRACE_WRITE(module->class_id, offset, data, data);
         host1x_incr_syncpt(data & 0xff);
         break;
     default:
@@ -43,6 +42,7 @@ static void gr3d_write(struct host1x_module *module,
 
 static uint32_t gr3d_read(struct host1x_module *module, uint32_t offset)
 {
+    TRACE_READ(module->class_id, offset, 0);
     return 0;
 }
 
