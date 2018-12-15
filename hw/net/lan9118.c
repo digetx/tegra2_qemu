@@ -1134,6 +1134,9 @@ static void lan9118_writel(void *opaque, hwaddr offset,
     case CSR_E2P_DATA:
         s->e2p_data = val & 0xff;
         break;
+    case CSR_BYTE_TEST:
+        /* Write to BYTE_TEST is noop.  */
+        return;
 
     default:
         qemu_log_mask(LOG_GUEST_ERROR, "lan9118_write: Bad reg 0x%x = %x\n",

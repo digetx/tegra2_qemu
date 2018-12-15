@@ -3228,6 +3228,14 @@ int main(int argc, char **argv, char **envp)
                 qemu_opts_set(qemu_find_opts("machine"), 0, "dtb", optarg,
                               &error_abort);
                 break;
+            case QEMU_OPTION_bootloader:
+                qemu_opts_set(qemu_find_opts("tegra"), 0, "bootloader", optarg,
+                              &error_abort);
+                break;
+            case QEMU_OPTION_iram:
+                qemu_opts_set(qemu_find_opts("tegra"), 0, "iram", optarg,
+                              &error_abort);
+                break;
             case QEMU_OPTION_cdrom:
                 drive_add(IF_DEFAULT, 2, optarg, CDROM_OPTS);
                 break;

@@ -1,0 +1,57 @@
+QEMU_CFLAGS += -I$(SRC_PATH)/hw/arm/tegra2/include
+# QEMU_CFLAGS += -DTEGRA_TRACE
+
+obj-y += axi/emc/emc.o
+obj-y += axi/mc/mc.o
+
+obj-y += ppsb/arb_sema/arb_sema.o
+obj-y += ppsb/res_sema/res_sema.o
+obj-y += ppsb/ictlr/arb_gnt_ictlr.o
+obj-y += ppsb/ictlr/ictlr.o
+obj-y += ppsb/apb_misc/apb_misc.o
+obj-y += ppsb/car/car.o
+obj-y += ppsb/evp/evp.o
+obj-y += ppsb/flow/flow.o
+obj-y += ppsb/gpio/gpio.o
+obj-y += ppsb/pg/pg.o
+obj-y += ppsb/timer/timer.o
+obj-y += ppsb/timer/timer_us.o
+
+obj-y += ahb/apb_dma/apb_dma.o
+obj-y += ahb/bse/bsea.o
+obj-y += ahb/bse/bsev.o
+obj-y += ahb/bse/frameid.o
+obj-y += ahb/bse/mbe.o
+obj-y += ahb/bse/mce.o
+obj-y += ahb/bse/sxe.o
+obj-y += ahb/bse/tfe.o
+obj-y += ahb/bse/vdma.o
+obj-y += ahb/bse/dummy256.o
+obj-y += ahb/bse/dummy768.o
+obj-y += ahb/bse/dummy2k.o
+obj-y += ahb/bse/dummy4k.o
+obj-y += ahb/bse/bse_remote.o
+obj-y += ahb/dma/ahb_dma.o
+obj-y += ahb/gizmo/gizmo.o
+obj-y += ahb/host1x/
+obj-y += ahb/usb/usb.o
+
+obj-y += apb/fuse/fuse.o
+obj-y += apb/i2c/i2c.o
+obj-y += apb/pmc/pmc.o
+obj-y += apb/rtc/rtc.o
+obj-y += apb/uart/uart.o
+
+obj-y += cpu/arm_op.o
+obj-y += cpu/cop_mmu.o
+obj-y += cpu/halt.o
+obj-y += cpu/reset.o
+
+obj-y += remote/remote_io.o
+obj-y += remote/remote_iram.o
+obj-y += remote/remote_mem.o
+
+obj-y += devices.o
+obj-y += irq_dispatcher.o
+obj-y += tegra2.o
+obj-y += trace.o

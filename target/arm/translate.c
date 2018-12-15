@@ -4724,7 +4724,7 @@ static void gen_nop_hint(DisasContext *s, int val)
         s->base.is_jmp = DISAS_WFI;
         break;
     case 2: /* wfe */
-        if (!(tb_cflags(s->base.tb) & CF_PARALLEL)) {
+        if (!(tb_cflags(s->base.tb) & CF_PARALLEL) || 1) {
             gen_set_pc_im(s, s->pc);
             s->base.is_jmp = DISAS_WFE;
         }

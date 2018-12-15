@@ -110,6 +110,7 @@ struct SDState {
     uint8_t pwd[16];
     uint32_t pwd_len;
     uint8_t function_group[6];
+    bool emmc;
     uint8_t current_cmd;
     /* True if we will handle the next command as an ACMD. Note that this does
      * *not* track the APP_CMD status bit!
@@ -119,6 +120,7 @@ struct SDState {
     uint64_t data_start;
     uint32_t data_offset;
     uint8_t data[512];
+    uint8_t ext_csd[512];
     qemu_irq readonly_cb;
     qemu_irq inserted_cb;
     QEMUTimer *ocr_power_timer;
@@ -292,7 +294,7 @@ FIELD(OCR, CARD_POWER_UP,              31,  1)
 static void sd_set_ocr(SDState *sd)
 {
     /* All voltages OK */
-    sd->ocr = R_OCR_VDD_VOLTAGE_WIN_HI_MASK;
+    sd->ocr = 0x80ffff80;
 }
 
 static void sd_ocr_powerup(void *opaque)
@@ -371,13 +373,608 @@ static const uint8_t sd_csd_rw_mask[16] = {
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xfc, 0xfe,
 };
 
+static void mmc_set_ext_csd(SDState *sd, uint64_t size)
+{
+    memset(sd->ext_csd, 0, 512);
+//     sd->ext_csd[504] = 0x1; /* supported command sets */
+//     sd->ext_csd[503] = 0x1; /* HPI features  */
+//     sd->ext_csd[502] = 0x1; /* Background operations support */
+//     sd->ext_csd[241] = 0xA; /* 1st initialization time after partitioning */
+//     sd->ext_csd[232] = 0x1; /* Trim multiplier */
+//     sd->ext_csd[231] = 0x15; /* Secure feature support */
+//     sd->ext_csd[230] = 0x96; /* Secure erase support */
+//     sd->ext_csd[229] = 0x96; /* Secure TRIM multiplier */
+//     sd->ext_csd[228] = 0x7; /* Boot information */
+//     sd->ext_csd[226] = 0x8; /* Boot partition size */
+//     sd->ext_csd[225] = 0x6; /* Access size */
+//     sd->ext_csd[224] = 0x4; /* HC Erase unit size */
+//     sd->ext_csd[223] = 0x1; /* HC erase timeout */
+//     sd->ext_csd[222] = 0x1; /* Reliable write sector count */
+//     sd->ext_csd[221] = 0x4; /* HC write protect group size (4G card) */
+//     sd->ext_csd[220] = 0x8; /* Sleep current VCC  */
+//     sd->ext_csd[219] = 0x7; /* Sleep current VCCQ */
+//     sd->ext_csd[217] = 0x11; /* Sleep/Awake timeout */
+//     sd->ext_csd[215] = 0x00; /* Sector count (4GB card) */
+//     sd->ext_csd[214] = 0x75; /* ... */
+//     sd->ext_csd[213] = 0xF0; /* ... */
+//     sd->ext_csd[212] = 0x00; /* ... */
+//     sd->ext_csd[210] = 0xa; /* Min write perf for 8bit@52Mhz */
+//     sd->ext_csd[209] = 0xa; /* Min read perf for 8bit@52Mhz  */
+//     sd->ext_csd[208] = 0xa; /* Min write perf for 4bit@52Mhz */
+//     sd->ext_csd[207] = 0xa; /* Min read perf for 4bit@52Mhz */
+//     sd->ext_csd[206] = 0xa; /* Min write perf for 4bit@26Mhz */
+//     sd->ext_csd[205] = 0xa; /* Min read perf for 4bit@26Mhz */
+//     sd->ext_csd[199] = 0x1; /* Partition switching timing */
+//     sd->ext_csd[198] = 0x1; /* Out-of-interrupt busy timing */
+//     sd->ext_csd[196] = 0x7; /* Card type */
+//     sd->ext_csd[194] = 0x2; /* CSD Structure version */
+//     sd->ext_csd[192] = 0x5; /* Extended CSD revision */
+//     sd->ext_csd[168] = 0x1; /* RPMB size */
+//     sd->ext_csd[160] = 0x3; /* Partinioning support */
+//     sd->ext_csd[159] = 0x00; /* Max enhanced area size (4GB card)  */
+//     sd->ext_csd[158] = 0x00; /* ... */
+//     sd->ext_csd[157] = 0xEC; /* ... */
+	sd->ext_csd[511] = 0x00;
+	sd->ext_csd[510] = 0x00;
+	sd->ext_csd[509] = 0x00;
+	sd->ext_csd[508] = 0x00;
+	sd->ext_csd[507] = 0x00;
+	sd->ext_csd[506] = 0x00;
+	sd->ext_csd[505] = 0x00;
+	sd->ext_csd[504] = 0x01;
+	sd->ext_csd[503] = 0x03;
+	sd->ext_csd[502] = 0x01;
+	sd->ext_csd[501] = 0x00;
+	sd->ext_csd[500] = 0x00;
+	sd->ext_csd[499] = 0x00;
+	sd->ext_csd[498] = 0x00;
+	sd->ext_csd[497] = 0x00;
+	sd->ext_csd[496] = 0x00;
+	sd->ext_csd[495] = 0x00;
+	sd->ext_csd[494] = 0x00;
+	sd->ext_csd[493] = 0x00;
+	sd->ext_csd[492] = 0x00;
+	sd->ext_csd[491] = 0x00;
+	sd->ext_csd[490] = 0x00;
+	sd->ext_csd[489] = 0x00;
+	sd->ext_csd[488] = 0x00;
+	sd->ext_csd[487] = 0x00;
+	sd->ext_csd[486] = 0x00;
+	sd->ext_csd[485] = 0x00;
+	sd->ext_csd[484] = 0x00;
+	sd->ext_csd[483] = 0x00;
+	sd->ext_csd[482] = 0x00;
+	sd->ext_csd[481] = 0x00;
+	sd->ext_csd[480] = 0x00;
+	sd->ext_csd[479] = 0x00;
+	sd->ext_csd[478] = 0x00;
+	sd->ext_csd[477] = 0x00;
+	sd->ext_csd[476] = 0x00;
+	sd->ext_csd[475] = 0x00;
+	sd->ext_csd[474] = 0x00;
+	sd->ext_csd[473] = 0x00;
+	sd->ext_csd[472] = 0x00;
+	sd->ext_csd[471] = 0x00;
+	sd->ext_csd[470] = 0x00;
+	sd->ext_csd[469] = 0x00;
+	sd->ext_csd[468] = 0x00;
+	sd->ext_csd[467] = 0x00;
+	sd->ext_csd[466] = 0x00;
+	sd->ext_csd[465] = 0x00;
+	sd->ext_csd[464] = 0x00;
+	sd->ext_csd[463] = 0x00;
+	sd->ext_csd[462] = 0x00;
+	sd->ext_csd[461] = 0x00;
+	sd->ext_csd[460] = 0x00;
+	sd->ext_csd[459] = 0x00;
+	sd->ext_csd[458] = 0x00;
+	sd->ext_csd[457] = 0x00;
+	sd->ext_csd[456] = 0x00;
+	sd->ext_csd[455] = 0x00;
+	sd->ext_csd[454] = 0x00;
+	sd->ext_csd[453] = 0x00;
+	sd->ext_csd[452] = 0x00;
+	sd->ext_csd[451] = 0x00;
+	sd->ext_csd[450] = 0x00;
+	sd->ext_csd[449] = 0x00;
+	sd->ext_csd[448] = 0x00;
+	sd->ext_csd[447] = 0x00;
+	sd->ext_csd[446] = 0x00;
+	sd->ext_csd[445] = 0x00;
+	sd->ext_csd[444] = 0x00;
+	sd->ext_csd[443] = 0x00;
+	sd->ext_csd[442] = 0x00;
+	sd->ext_csd[441] = 0x00;
+	sd->ext_csd[440] = 0x00;
+	sd->ext_csd[439] = 0x00;
+	sd->ext_csd[438] = 0x00;
+	sd->ext_csd[437] = 0x00;
+	sd->ext_csd[436] = 0x00;
+	sd->ext_csd[435] = 0x00;
+	sd->ext_csd[434] = 0x00;
+	sd->ext_csd[433] = 0x00;
+	sd->ext_csd[432] = 0x00;
+	sd->ext_csd[431] = 0x00;
+	sd->ext_csd[430] = 0x00;
+	sd->ext_csd[429] = 0x00;
+	sd->ext_csd[428] = 0x00;
+	sd->ext_csd[427] = 0x00;
+	sd->ext_csd[426] = 0x00;
+	sd->ext_csd[425] = 0x00;
+	sd->ext_csd[424] = 0x00;
+	sd->ext_csd[423] = 0x00;
+	sd->ext_csd[422] = 0x00;
+	sd->ext_csd[421] = 0x00;
+	sd->ext_csd[420] = 0x00;
+	sd->ext_csd[419] = 0x00;
+	sd->ext_csd[418] = 0x00;
+	sd->ext_csd[417] = 0x00;
+	sd->ext_csd[416] = 0x00;
+	sd->ext_csd[415] = 0x00;
+	sd->ext_csd[414] = 0x00;
+	sd->ext_csd[413] = 0x00;
+	sd->ext_csd[412] = 0x00;
+	sd->ext_csd[411] = 0x00;
+	sd->ext_csd[410] = 0x00;
+	sd->ext_csd[409] = 0x00;
+	sd->ext_csd[408] = 0x00;
+	sd->ext_csd[407] = 0x00;
+	sd->ext_csd[406] = 0x00;
+	sd->ext_csd[405] = 0x00;
+	sd->ext_csd[404] = 0x00;
+	sd->ext_csd[403] = 0x00;
+	sd->ext_csd[402] = 0x00;
+	sd->ext_csd[401] = 0x00;
+	sd->ext_csd[400] = 0x00;
+	sd->ext_csd[399] = 0x00;
+	sd->ext_csd[398] = 0x00;
+	sd->ext_csd[397] = 0x00;
+	sd->ext_csd[396] = 0x00;
+	sd->ext_csd[395] = 0x00;
+	sd->ext_csd[394] = 0x00;
+	sd->ext_csd[393] = 0x00;
+	sd->ext_csd[392] = 0x00;
+	sd->ext_csd[391] = 0x00;
+	sd->ext_csd[390] = 0x00;
+	sd->ext_csd[389] = 0x00;
+	sd->ext_csd[388] = 0x00;
+	sd->ext_csd[387] = 0x00;
+	sd->ext_csd[386] = 0x00;
+	sd->ext_csd[385] = 0x00;
+	sd->ext_csd[384] = 0x00;
+	sd->ext_csd[383] = 0x00;
+	sd->ext_csd[382] = 0x00;
+	sd->ext_csd[381] = 0x00;
+	sd->ext_csd[380] = 0x00;
+	sd->ext_csd[379] = 0x00;
+	sd->ext_csd[378] = 0x00;
+	sd->ext_csd[377] = 0x00;
+	sd->ext_csd[376] = 0x00;
+	sd->ext_csd[375] = 0x00;
+	sd->ext_csd[374] = 0x00;
+	sd->ext_csd[373] = 0x00;
+	sd->ext_csd[372] = 0x00;
+	sd->ext_csd[371] = 0x00;
+	sd->ext_csd[370] = 0x00;
+	sd->ext_csd[369] = 0x00;
+	sd->ext_csd[368] = 0x00;
+	sd->ext_csd[367] = 0x00;
+	sd->ext_csd[366] = 0x00;
+	sd->ext_csd[365] = 0x00;
+	sd->ext_csd[364] = 0x00;
+	sd->ext_csd[363] = 0x00;
+	sd->ext_csd[362] = 0x00;
+	sd->ext_csd[361] = 0x00;
+	sd->ext_csd[360] = 0x00;
+	sd->ext_csd[359] = 0x00;
+	sd->ext_csd[358] = 0x00;
+	sd->ext_csd[357] = 0x00;
+	sd->ext_csd[356] = 0x00;
+	sd->ext_csd[355] = 0x00;
+	sd->ext_csd[354] = 0x00;
+	sd->ext_csd[353] = 0x00;
+	sd->ext_csd[352] = 0x00;
+	sd->ext_csd[351] = 0x00;
+	sd->ext_csd[350] = 0x00;
+	sd->ext_csd[349] = 0x00;
+	sd->ext_csd[348] = 0x00;
+	sd->ext_csd[347] = 0x00;
+	sd->ext_csd[346] = 0x00;
+	sd->ext_csd[345] = 0x00;
+	sd->ext_csd[344] = 0x00;
+	sd->ext_csd[343] = 0x00;
+	sd->ext_csd[342] = 0x00;
+	sd->ext_csd[341] = 0x00;
+	sd->ext_csd[340] = 0x00;
+	sd->ext_csd[339] = 0x00;
+	sd->ext_csd[338] = 0x00;
+	sd->ext_csd[337] = 0x00;
+	sd->ext_csd[336] = 0x00;
+	sd->ext_csd[335] = 0x00;
+	sd->ext_csd[334] = 0x00;
+	sd->ext_csd[333] = 0x00;
+	sd->ext_csd[332] = 0x00;
+	sd->ext_csd[331] = 0x00;
+	sd->ext_csd[330] = 0x00;
+	sd->ext_csd[329] = 0x00;
+	sd->ext_csd[328] = 0x00;
+	sd->ext_csd[327] = 0x00;
+	sd->ext_csd[326] = 0x00;
+	sd->ext_csd[325] = 0x00;
+	sd->ext_csd[324] = 0x00;
+	sd->ext_csd[323] = 0x00;
+	sd->ext_csd[322] = 0x00;
+	sd->ext_csd[321] = 0x00;
+	sd->ext_csd[320] = 0x00;
+	sd->ext_csd[319] = 0x00;
+	sd->ext_csd[318] = 0x00;
+	sd->ext_csd[317] = 0x00;
+	sd->ext_csd[316] = 0x00;
+	sd->ext_csd[315] = 0x00;
+	sd->ext_csd[314] = 0x00;
+	sd->ext_csd[313] = 0x00;
+	sd->ext_csd[312] = 0x00;
+	sd->ext_csd[311] = 0x00;
+	sd->ext_csd[310] = 0x00;
+	sd->ext_csd[309] = 0x00;
+	sd->ext_csd[308] = 0x00;
+	sd->ext_csd[307] = 0x00;
+	sd->ext_csd[306] = 0x00;
+	sd->ext_csd[305] = 0x00;
+	sd->ext_csd[304] = 0x00;
+	sd->ext_csd[303] = 0x00;
+	sd->ext_csd[302] = 0x00;
+	sd->ext_csd[301] = 0x00;
+	sd->ext_csd[300] = 0x00;
+	sd->ext_csd[299] = 0x00;
+	sd->ext_csd[298] = 0x00;
+	sd->ext_csd[297] = 0x00;
+	sd->ext_csd[296] = 0x00;
+	sd->ext_csd[295] = 0x00;
+	sd->ext_csd[294] = 0x00;
+	sd->ext_csd[293] = 0x00;
+	sd->ext_csd[292] = 0x00;
+	sd->ext_csd[291] = 0x00;
+	sd->ext_csd[290] = 0x00;
+	sd->ext_csd[289] = 0x00;
+	sd->ext_csd[288] = 0x00;
+	sd->ext_csd[287] = 0x00;
+	sd->ext_csd[286] = 0x00;
+	sd->ext_csd[285] = 0x00;
+	sd->ext_csd[284] = 0x00;
+	sd->ext_csd[283] = 0x00;
+	sd->ext_csd[282] = 0x00;
+	sd->ext_csd[281] = 0x00;
+	sd->ext_csd[280] = 0x00;
+	sd->ext_csd[279] = 0x00;
+	sd->ext_csd[278] = 0x00;
+	sd->ext_csd[277] = 0x00;
+	sd->ext_csd[276] = 0x00;
+	sd->ext_csd[275] = 0x00;
+	sd->ext_csd[274] = 0x00;
+	sd->ext_csd[273] = 0x00;
+	sd->ext_csd[272] = 0x00;
+	sd->ext_csd[271] = 0x00;
+	sd->ext_csd[270] = 0x00;
+	sd->ext_csd[269] = 0x00;
+	sd->ext_csd[268] = 0x00;
+	sd->ext_csd[267] = 0x00;
+	sd->ext_csd[266] = 0x00;
+	sd->ext_csd[265] = 0x00;
+	sd->ext_csd[264] = 0x00;
+	sd->ext_csd[263] = 0x00;
+	sd->ext_csd[262] = 0x00;
+	sd->ext_csd[261] = 0x00;
+	sd->ext_csd[260] = 0x00;
+	sd->ext_csd[259] = 0x00;
+	sd->ext_csd[258] = 0x00;
+	sd->ext_csd[257] = 0x00;
+	sd->ext_csd[256] = 0x00;
+	sd->ext_csd[255] = 0x00;
+	sd->ext_csd[254] = 0x00;
+	sd->ext_csd[253] = 0x00;
+	sd->ext_csd[252] = 0x00;
+	sd->ext_csd[251] = 0x00;
+	sd->ext_csd[250] = 0x00;
+	sd->ext_csd[249] = 0x00;
+	sd->ext_csd[248] = 0x00;
+	sd->ext_csd[247] = 0x00;
+	sd->ext_csd[246] = 0x00;
+	sd->ext_csd[245] = 0x00;
+	sd->ext_csd[244] = 0x00;
+	sd->ext_csd[243] = 0x00;
+	sd->ext_csd[242] = 0x00;
+	sd->ext_csd[241] = 0x0a;
+	sd->ext_csd[240] = 0x00;
+	sd->ext_csd[239] = 0x00;
+	sd->ext_csd[238] = 0x00;
+	sd->ext_csd[237] = 0x00;
+	sd->ext_csd[236] = 0x00;
+	sd->ext_csd[235] = 0x00;
+	sd->ext_csd[234] = 0x00;
+	sd->ext_csd[233] = 0x00;
+	sd->ext_csd[232] = 0x01;
+	sd->ext_csd[231] = 0x15;
+	sd->ext_csd[230] = 0x0a;
+	sd->ext_csd[229] = 0x0a;
+	sd->ext_csd[228] = 0x07;
+	sd->ext_csd[227] = 0x00;
+	sd->ext_csd[226] = 0x04;
+	sd->ext_csd[225] = 0x07;
+	sd->ext_csd[224] = 0x01;
+	sd->ext_csd[223] = 0x01;
+	sd->ext_csd[222] = 0x01;
+	sd->ext_csd[221] = 0x10;
+	sd->ext_csd[220] = 0x07;
+	sd->ext_csd[219] = 0x07;
+	sd->ext_csd[218] = 0x00;
+	sd->ext_csd[217] = 0x13;
+	sd->ext_csd[216] = 0x00;
+	sd->ext_csd[215] = 0x01;
+	sd->ext_csd[214] = 0xdd;
+	sd->ext_csd[213] = 0x00;
+	sd->ext_csd[212] = 0x00;
+	sd->ext_csd[211] = 0x00;
+	sd->ext_csd[210] = 0x00;
+	sd->ext_csd[209] = 0x00;
+	sd->ext_csd[208] = 0x00;
+	sd->ext_csd[207] = 0x00;
+	sd->ext_csd[206] = 0x00;
+	sd->ext_csd[205] = 0x00;
+	sd->ext_csd[204] = 0x00;
+	sd->ext_csd[203] = 0x00;
+	sd->ext_csd[202] = 0x00;
+	sd->ext_csd[201] = 0x00;
+	sd->ext_csd[200] = 0x00;
+	sd->ext_csd[199] = 0x01;
+	sd->ext_csd[198] = 0x01;
+	sd->ext_csd[197] = 0x00;
+	sd->ext_csd[196] = 0x07;
+	sd->ext_csd[195] = 0x00;
+	sd->ext_csd[194] = 0x02;
+	sd->ext_csd[193] = 0x00;
+	sd->ext_csd[192] = 0x05;
+	sd->ext_csd[191] = 0x00;
+	sd->ext_csd[190] = 0x00;
+	sd->ext_csd[189] = 0x00;
+	sd->ext_csd[188] = 0x00;
+	sd->ext_csd[187] = 0x00;
+	sd->ext_csd[186] = 0x00;
+	sd->ext_csd[185] = 0x01;
+	sd->ext_csd[184] = 0x00;
+	sd->ext_csd[183] = 0x00;
+	sd->ext_csd[182] = 0x00;
+	sd->ext_csd[181] = 0x00;
+	sd->ext_csd[180] = 0x00;
+	sd->ext_csd[179] = 0x00;
+	sd->ext_csd[178] = 0x00;
+	sd->ext_csd[177] = 0x00;
+	sd->ext_csd[176] = 0x00;
+	sd->ext_csd[175] = 0x01;
+	sd->ext_csd[174] = 0x00;
+	sd->ext_csd[173] = 0x00;
+	sd->ext_csd[172] = 0x00;
+	sd->ext_csd[171] = 0x00;
+	sd->ext_csd[170] = 0x00;
+	sd->ext_csd[169] = 0x00;
+	sd->ext_csd[168] = 0x01;
+	sd->ext_csd[167] = 0x1f;
+	sd->ext_csd[166] = 0x05;
+	sd->ext_csd[165] = 0x00;
+	sd->ext_csd[164] = 0x00;
+	sd->ext_csd[163] = 0x01;
+	sd->ext_csd[162] = 0x00;
+	sd->ext_csd[161] = 0x01;
+	sd->ext_csd[160] = 0x03;
+	sd->ext_csd[159] = 0x00;
+	sd->ext_csd[158] = 0x03;
+	sd->ext_csd[157] = 0x92;
+	sd->ext_csd[156] = 0x00;
+	sd->ext_csd[155] = 0x00;
+	sd->ext_csd[154] = 0x00;
+	sd->ext_csd[153] = 0x00;
+	sd->ext_csd[152] = 0x00;
+	sd->ext_csd[151] = 0x00;
+	sd->ext_csd[150] = 0x00;
+	sd->ext_csd[149] = 0x00;
+	sd->ext_csd[148] = 0x00;
+	sd->ext_csd[147] = 0x00;
+	sd->ext_csd[146] = 0x00;
+	sd->ext_csd[145] = 0x00;
+	sd->ext_csd[144] = 0x00;
+	sd->ext_csd[143] = 0x00;
+	sd->ext_csd[142] = 0x00;
+	sd->ext_csd[141] = 0x00;
+	sd->ext_csd[140] = 0x00;
+	sd->ext_csd[139] = 0x00;
+	sd->ext_csd[138] = 0x00;
+	sd->ext_csd[137] = 0x00;
+	sd->ext_csd[136] = 0x00;
+	sd->ext_csd[135] = 0x00;
+	sd->ext_csd[134] = 0x00;
+	sd->ext_csd[133] = 0x00;
+	sd->ext_csd[132] = 0x00;
+	sd->ext_csd[131] = 0x00;
+	sd->ext_csd[130] = 0x00;
+	sd->ext_csd[129] = 0x00;
+	sd->ext_csd[128] = 0x00;
+	sd->ext_csd[127] = 0x00;
+	sd->ext_csd[126] = 0x00;
+	sd->ext_csd[125] = 0x00;
+	sd->ext_csd[124] = 0x00;
+	sd->ext_csd[123] = 0x00;
+	sd->ext_csd[122] = 0x00;
+	sd->ext_csd[121] = 0x00;
+	sd->ext_csd[120] = 0x00;
+	sd->ext_csd[119] = 0x00;
+	sd->ext_csd[118] = 0x00;
+	sd->ext_csd[117] = 0x00;
+	sd->ext_csd[116] = 0x00;
+	sd->ext_csd[115] = 0x00;
+	sd->ext_csd[114] = 0x00;
+	sd->ext_csd[113] = 0x00;
+	sd->ext_csd[112] = 0x00;
+	sd->ext_csd[111] = 0x00;
+	sd->ext_csd[110] = 0x00;
+	sd->ext_csd[109] = 0x00;
+	sd->ext_csd[108] = 0x00;
+	sd->ext_csd[107] = 0x00;
+	sd->ext_csd[106] = 0x00;
+	sd->ext_csd[105] = 0x00;
+	sd->ext_csd[104] = 0x00;
+	sd->ext_csd[103] = 0x00;
+	sd->ext_csd[102] = 0x00;
+	sd->ext_csd[101] = 0x00;
+	sd->ext_csd[100] = 0x00;
+	sd->ext_csd[99] = 0x00;
+	sd->ext_csd[98] = 0x00;
+	sd->ext_csd[97] = 0x00;
+	sd->ext_csd[96] = 0x00;
+	sd->ext_csd[95] = 0x00;
+	sd->ext_csd[94] = 0x00;
+	sd->ext_csd[93] = 0x00;
+	sd->ext_csd[92] = 0x00;
+	sd->ext_csd[91] = 0x00;
+	sd->ext_csd[90] = 0x00;
+	sd->ext_csd[89] = 0x00;
+	sd->ext_csd[88] = 0x00;
+	sd->ext_csd[87] = 0x00;
+	sd->ext_csd[86] = 0x00;
+	sd->ext_csd[85] = 0x00;
+	sd->ext_csd[84] = 0x00;
+	sd->ext_csd[83] = 0x00;
+	sd->ext_csd[82] = 0x00;
+	sd->ext_csd[81] = 0x00;
+	sd->ext_csd[80] = 0x00;
+	sd->ext_csd[79] = 0x00;
+	sd->ext_csd[78] = 0x00;
+	sd->ext_csd[77] = 0x00;
+	sd->ext_csd[76] = 0x00;
+	sd->ext_csd[75] = 0x00;
+	sd->ext_csd[74] = 0x00;
+	sd->ext_csd[73] = 0x00;
+	sd->ext_csd[72] = 0x00;
+	sd->ext_csd[71] = 0x00;
+	sd->ext_csd[70] = 0x00;
+	sd->ext_csd[69] = 0x00;
+	sd->ext_csd[68] = 0x00;
+	sd->ext_csd[67] = 0x00;
+	sd->ext_csd[66] = 0x00;
+	sd->ext_csd[65] = 0x00;
+	sd->ext_csd[64] = 0x00;
+	sd->ext_csd[63] = 0x00;
+	sd->ext_csd[62] = 0x00;
+	sd->ext_csd[61] = 0x00;
+	sd->ext_csd[60] = 0x00;
+	sd->ext_csd[59] = 0x00;
+	sd->ext_csd[58] = 0x00;
+	sd->ext_csd[57] = 0x00;
+	sd->ext_csd[56] = 0x00;
+	sd->ext_csd[55] = 0x00;
+	sd->ext_csd[54] = 0x00;
+	sd->ext_csd[53] = 0x00;
+	sd->ext_csd[52] = 0x00;
+	sd->ext_csd[51] = 0x00;
+	sd->ext_csd[50] = 0x00;
+	sd->ext_csd[49] = 0x00;
+	sd->ext_csd[48] = 0x00;
+	sd->ext_csd[47] = 0x00;
+	sd->ext_csd[46] = 0x00;
+	sd->ext_csd[45] = 0x00;
+	sd->ext_csd[44] = 0x00;
+	sd->ext_csd[43] = 0x00;
+	sd->ext_csd[42] = 0x00;
+	sd->ext_csd[41] = 0x00;
+	sd->ext_csd[40] = 0x00;
+	sd->ext_csd[39] = 0x00;
+	sd->ext_csd[38] = 0x00;
+	sd->ext_csd[37] = 0x00;
+	sd->ext_csd[36] = 0x00;
+	sd->ext_csd[35] = 0x00;
+	sd->ext_csd[34] = 0x00;
+	sd->ext_csd[33] = 0x00;
+	sd->ext_csd[32] = 0x00;
+	sd->ext_csd[31] = 0x00;
+	sd->ext_csd[30] = 0x00;
+	sd->ext_csd[29] = 0x00;
+	sd->ext_csd[28] = 0x00;
+	sd->ext_csd[27] = 0x00;
+	sd->ext_csd[26] = 0x00;
+	sd->ext_csd[25] = 0x00;
+	sd->ext_csd[24] = 0x00;
+	sd->ext_csd[23] = 0x00;
+	sd->ext_csd[22] = 0x00;
+	sd->ext_csd[21] = 0x00;
+	sd->ext_csd[20] = 0x00;
+	sd->ext_csd[19] = 0x00;
+	sd->ext_csd[18] = 0x00;
+	sd->ext_csd[17] = 0x00;
+	sd->ext_csd[16] = 0x00;
+	sd->ext_csd[15] = 0x00;
+	sd->ext_csd[14] = 0x00;
+	sd->ext_csd[13] = 0x00;
+	sd->ext_csd[12] = 0x00;
+	sd->ext_csd[11] = 0x00;
+	sd->ext_csd[10] = 0x00;
+	sd->ext_csd[9] = 0x00;
+	sd->ext_csd[8] = 0x00;
+	sd->ext_csd[7] = 0x00;
+	sd->ext_csd[6] = 0x00;
+	sd->ext_csd[5] = 0x00;
+	sd->ext_csd[4] = 0x00;
+	sd->ext_csd[3] = 0x00;
+	sd->ext_csd[2] = 0x00;
+	sd->ext_csd[1] = 0x00;
+	sd->ext_csd[0] = 0x00;
+}
+
 static void sd_set_csd(SDState *sd, uint64_t size)
 {
     uint32_t csize = (size >> (CMULT_SHIFT + HWBLOCK_SHIFT)) - 1;
     uint32_t sectsize = (1 << (SECTOR_SHIFT + 1)) - 1;
     uint32_t wpsize = (1 << (WPGROUP_SHIFT + 1)) - 1;
 
-    if (size <= 1 * GiB) { /* Standard Capacity SD */
+    if (sd->emmc) { /* eMMC */
+//         sd->csd[0] = 0xd0;
+//         sd->csd[1] = 0x0f;
+//         sd->csd[2] = 0x00;
+//         sd->csd[3] = 0x32;
+//         sd->csd[4] = 0x0f;
+//         sd->csd[5] = 0x59;
+//         sd->csd[6] = 0x8f;
+//         sd->csd[7] = 0xff;
+//         sd->csd[8] = 0xff;
+//         sd->csd[9] = 0xff;
+//         sd->csd[10] = 0xf7;
+//         sd->csd[11] = 0xfe;
+//         sd->csd[12] = 0x49;
+//         sd->csd[13] = 0x10;
+//         sd->csd[14] = 0x00;
+//         sd->csd[15] = (sd_crc7(sd->csd, 15) << 1) | 1;
+
+        sd->csd[2] = 0x00;
+        sd->csd[14] = 0x40;
+        sd->csd[13] = 0x40;
+        sd->csd[12] = 0x8a;
+
+        sd->csd[11] = 0xef;
+        sd->csd[7] = 0xff;
+        sd->csd[9] = 0xdb;
+        sd->csd[8] = 0xf6;
+
+        sd->csd[8] = 0xff;
+        sd->csd[6] = 0x03;
+        sd->csd[5] = 0x59;
+        sd->csd[4] = 0x0f;
+
+        sd->csd[3] = 0x32;
+        sd->csd[2] = 0x01;
+        sd->csd[1] = 0x27;
+        sd->csd[0] = 0xd0;
+        //if (csize > 8192) /* > 2GB */
+            sd->ocr |= 1 << 30;
+        mmc_set_ext_csd(sd, size);
+    } else if (size <= 1 * GiB) { /* Standard Capacity SD */
         sd->csd[0] = 0x00;	/* CSD structure */
         sd->csd[1] = 0x26;	/* Data read access-time-1 */
         sd->csd[2] = 0x00;	/* Data read access-time-2 */
@@ -424,9 +1021,13 @@ static void sd_set_csd(SDState *sd, uint64_t size)
     sd->csd[15] = (sd_crc7(sd->csd, 15) << 1) | 1;
 }
 
-static void sd_set_rca(SDState *sd)
+static void sd_set_rca(SDState *sd, uint16_t value)
 {
-    sd->rca += 0x4567;
+    if (sd->emmc) {
+        sd->rca = value;
+    } else {
+        sd->rca += 0x4567;
+    }
 }
 
 FIELD(CSR, AKE_SEQ_ERROR,               3,  1)
@@ -919,6 +1520,11 @@ static sd_rsp_type_t sd_normal_command(SDState *sd, SDRequest req)
         break;
 
     case 1:	/* CMD1:   SEND_OP_CMD */
+        if (sd->emmc) {
+            sd->state = sd_ready_state;
+            return sd_r3;
+        }
+
         if (!sd->spi)
             goto bad_cmd;
 
@@ -945,8 +1551,8 @@ static sd_rsp_type_t sd_normal_command(SDState *sd, SDRequest req)
         case sd_identification_state:
         case sd_standby_state:
             sd->state = sd_standby_state;
-            sd_set_rca(sd);
-            return sd_r6;
+            sd_set_rca(sd, req.arg >> 16);
+            return sd->emmc ? sd_r1 : sd_r6;
 
         default:
             break;
@@ -969,6 +1575,9 @@ static sd_rsp_type_t sd_normal_command(SDState *sd, SDRequest req)
         return sd_illegal;
 
     case 6:	/* CMD6:   SWITCH_FUNCTION */
+        if (sd->emmc) {
+            return sd_r1b;
+        }
         switch (sd->mode) {
         case sd_data_transfer_mode:
             sd_function_switch(sd, req.arg);
@@ -1020,23 +1629,39 @@ static sd_rsp_type_t sd_normal_command(SDState *sd, SDRequest req)
         }
         break;
 
-    case 8:	/* CMD8:   SEND_IF_COND */
-        if (sd->spec_version < SD_PHY_SPECv2_00_VERS) {
-            break;
-        }
-        if (sd->state != sd_idle_state) {
-            break;
-        }
-        sd->vhs = 0;
+    case 8:	/* CMD8:   SEND_IF_COND / SEND_EXT_CSD */
+        if (sd->emmc) {
+            switch (sd->state) {
+            case sd_idle_state:
+            case sd_transfer_state:
+                /* MMC : Sends the EXT_CSD register as a Block of data */
+                sd->state = sd_sendingdata_state;
+                memcpy(sd->data, sd->ext_csd, 512);
+                sd->data_start = addr;
+                sd->data_offset = 0;
+                return sd_r1;
+            default:
+                break;
+            }
+        } else {
+            if (sd->spec_version < SD_PHY_SPECv2_00_VERS) {
+                break;
+            }
+            if (sd->state != sd_idle_state) {
+                break;
+            }
+            sd->vhs = 0;
 
-        /* No response if not exactly one VHS bit is set.  */
-        if (!(req.arg >> 8) || (req.arg >> (ctz32(req.arg & ~0xff) + 1))) {
-            return sd->spi ? sd_r7 : sd_r0;
-        }
+            /* No response if not exactly one VHS bit is set.  */
+            if (!(req.arg >> 8) || (req.arg >> (ctz32(req.arg & ~0xff) + 1))) {
+                return sd->spi ? sd_r7 : sd_r0;
+            }
 
-        /* Accept.  */
-        sd->vhs = req.arg;
-        return sd_r7;
+            /* Accept.  */
+            sd->vhs = req.arg;
+            return sd_r7;
+        }
+        break;
 
     case 9:	/* CMD9:   SEND_CSD */
         switch (sd->state) {
@@ -1190,6 +1815,9 @@ static sd_rsp_type_t sd_normal_command(SDState *sd, SDRequest req)
         break;
 
     case 23:    /* CMD23: SET_BLOCK_COUNT */
+        sd->state = sd_transfer_state;
+        return sd_r1;
+
         if (sd->spec_version < SD_PHY_SPECv3_01_VERS) {
             break;
         }
@@ -1400,6 +2028,11 @@ static sd_rsp_type_t sd_normal_command(SDState *sd, SDRequest req)
 
     /* Application specific commands (Class 8) */
     case 55:	/* CMD55:  APP_CMD */
+        /* Not supported by MMC */
+        if (sd->emmc) {
+            return sd_r0;
+        }
+
         switch (sd->state) {
         case sd_ready_state:
         case sd_identification_state:
@@ -1949,6 +2582,14 @@ uint8_t sd_read_data(SDState *sd)
             sd->state = sd_transfer_state;
         break;
 
+    case 8:     /* CMD8: SEND_EXT_CSD on MMC */
+        ret = sd->data[sd->data_offset++];
+
+        if (sd->data_offset >= 512) {
+            sd->state = sd_transfer_state;
+        }
+        break;
+
     case 9:	/* CMD9:   SEND_CSD */
     case 10:	/* CMD10:  SEND_CID */
         ret = sd->data[sd->data_offset ++];
@@ -2108,6 +2749,7 @@ static Property sd_properties[] = {
      * board to ensure that ssi transfers only occur when the chip select
      * is asserted.  */
     DEFINE_PROP_BOOL("spi", SDState, spi, false),
+    DEFINE_PROP_BOOL("emmc", SDState, emmc, false),
     DEFINE_PROP_END_OF_LIST()
 };
 

@@ -2970,6 +2970,12 @@ Use @var{file} as a device tree binary (dtb) image and pass it to the kernel
 on boot.
 ETEXI
 
+DEF("bootloader", HAS_ARG, QEMU_OPTION_bootloader, \
+    "-bootloader     use 'bootloader' as bootloader image\n", QEMU_ARCH_ARM)
+
+DEF("iram", HAS_ARG, QEMU_OPTION_iram, \
+    "-iram           use 'iram' as IRAM memory image\n", QEMU_ARCH_ARM)
+
 STEXI
 @end table
 ETEXI

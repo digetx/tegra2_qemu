@@ -130,13 +130,10 @@ static void cp_reg_check_reset(gpointer key, gpointer value,  gpointer opaque)
 }
 
 /* CPUClass::reset() */
-static void arm_cpu_reset(CPUState *s)
+void __arm_cpu_reset(CPUState *s)
 {
     ARMCPU *cpu = ARM_CPU(s);
-    ARMCPUClass *acc = ARM_CPU_GET_CLASS(cpu);
     CPUARMState *env = &cpu->env;
-
-    acc->parent_reset(s);
 
     memset(env, 0, offsetof(CPUARMState, end_reset_fields));
 
@@ -355,6 +352,16 @@ static void arm_cpu_reset(CPUState *s)
 
     hw_breakpoint_update_all(cpu);
     hw_watchpoint_update_all(cpu);
+}
+
+static void arm_cpu_reset(CPUState *s)
+{
+    ARMCPU *cpu = ARM_CPU(s);
+    ARMCPUClass *acc = ARM_CPU_GET_CLASS(cpu);
+
+    acc->parent_reset(s);
+
+    __arm_cpu_reset(s);
 }
 
 bool arm_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
@@ -1146,6 +1153,16 @@ static ObjectClass *arm_cpu_class_by_name(const char *cpu_model)
 
 /* CPU models. These are not needed for the AArch64 linux-user build. */
 #if !defined(CONFIG_USER_ONLY) || !defined(TARGET_AARCH64)
+
+static void arm7tdmi_initfn(Object *obj)
+{
+    ARMCPU *cpu = ARM_CPU(obj);
+    set_feature(&cpu->env, ARM_FEATURE_V4T);
+    set_feature(&cpu->env, ARM_FEATURE_NOCP15);
+    set_feature(&cpu->env, ARM_FEATURE_ABORT_BU);
+    cpu->midr = 0x41807000;
+    cpu->reset_sctlr = 0x00000070;
+}
 
 static void arm926_initfn(Object *obj)
 {
@@ -1948,6 +1965,7 @@ typedef struct ARMCPUInfo {
 
 static const ARMCPUInfo arm_cpus[] = {
 #if !defined(CONFIG_USER_ONLY) || !defined(TARGET_AARCH64)
+    { .name = "arm7tdmi",    .initfn = arm7tdmi_initfn },
     { .name = "arm926",      .initfn = arm926_initfn },
     { .name = "arm946",      .initfn = arm946_initfn },
     { .name = "arm1026",     .initfn = arm1026_initfn },

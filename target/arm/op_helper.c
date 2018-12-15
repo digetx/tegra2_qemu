@@ -469,7 +469,7 @@ void HELPER(wfi)(CPUARMState *env, uint32_t insn_len)
     cpu_loop_exit(cs);
 }
 
-void HELPER(wfe)(CPUARMState *env)
+void __attribute__((weak)) HELPER(wfe)(CPUARMState *env)
 {
     /* This is a hint instruction that is semantically different
      * from YIELD even though we currently implement it identically.

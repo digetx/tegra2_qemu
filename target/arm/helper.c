@@ -4960,7 +4960,8 @@ void register_cp_regs_for_features(ARMCPU *cpu)
 {
     /* Register all the coprocessor registers based on feature bits */
     CPUARMState *env = &cpu->env;
-    if (arm_feature(env, ARM_FEATURE_M)) {
+    if (arm_feature(env, ARM_FEATURE_M) ||
+            arm_feature(env, ARM_FEATURE_NOCP15)) {
         /* M profile has no coprocessor registers */
         return;
     }
@@ -10851,6 +10852,10 @@ static bool get_phys_addr(CPUARMState *env, target_ulong address,
 
     if (regime_translation_disabled(env, mmu_idx)) {
         /* MMU disabled. */
+        ARMCPU *cpu = arm_env_get_cpu(env);
+        if (cpu->translate_addr) {
+            address = cpu->translate_addr(address, access_type);
+        }
         *phys_ptr = address;
         *prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
         *page_size = TARGET_PAGE_SIZE;
