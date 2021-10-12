@@ -1003,6 +1003,8 @@ struct ARMCPU {
     /* Used to synchronize KVM and QEMU in-kernel device levels */
     uint8_t device_irq_level;
 
+    hwaddr (*translate_addr)(hwaddr addr, int access_type);
+
     /* Used to set the maximum vector length the cpu will support.  */
     uint32_t sve_max_vq;
 
@@ -1107,6 +1109,7 @@ static inline void aarch64_add_sve_properties(Object *obj) { }
 
 void aarch64_sync_32_to_64(CPUARMState *env);
 void aarch64_sync_64_to_32(CPUARMState *env);
+void __arm_cpu_reset(CPUState *s);
 
 int fp_exception_el(CPUARMState *env, int cur_el);
 int sve_exception_el(CPUARMState *env, int cur_el);
@@ -2107,6 +2110,8 @@ QEMU_BUILD_BUG_ON(ARRAY_SIZE(((ARMCPU *)0)->ccsidr) <= R_V7M_CSSELR_INDEX_MASK);
  * mapping in linux-user/elfload.c:get_elf_hwcap().
  */
 enum arm_features {
+    ARM_FEATURE_NOCP15, /* ARM7TDMI, ARM7TDMI-S, ARM7EJ-S, and ARM9TDMI cores do not have a CP15 */
+    ARM_FEATURE_ABORT_BU, /* base updated abort model, e.g. ARMxTDMI */
     ARM_FEATURE_AUXCR,  /* ARM1026 Auxiliary control register.  */
     ARM_FEATURE_XSCALE, /* Intel XScale extensions.  */
     ARM_FEATURE_IWMMXT, /* Intel iwMMXt extension.  */

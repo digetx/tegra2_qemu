@@ -546,3 +546,14 @@ config ARMSSE
     select UNIMP
     select SSE_COUNTER
     select SSE_TIMER
+
+config TEGRA2
+    bool
+    select I2C
+    select SDHCI
+    select SERIAL
+    select LAN9118
+    select PL310
+    select PTIMER
+    select A9MPCORE
+    select USB_EHCI_SYSBUS

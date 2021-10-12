@@ -48,6 +48,16 @@ static bool arm_v7m_cpu_exec_interrupt(CPUState *cs, int interrupt_request)
 }
 #endif /* CONFIG_TCG */
 
+static void arm7tdmi_initfn(Object *obj)
+{
+    ARMCPU *cpu = ARM_CPU(obj);
+    set_feature(&cpu->env, ARM_FEATURE_V4T);
+    set_feature(&cpu->env, ARM_FEATURE_NOCP15);
+    set_feature(&cpu->env, ARM_FEATURE_ABORT_BU);
+    cpu->midr = 0x41807000;
+    cpu->reset_sctlr = 0x00000070;
+}
+
 static void arm926_initfn(Object *obj)
 {
     ARMCPU *cpu = ARM_CPU(obj);
@@ -1007,6 +1017,7 @@ static void arm_max_initfn(Object *obj)
 #endif /* !TARGET_AARCH64 */
 
 static const ARMCPUInfo arm_tcg_cpus[] = {
+    { .name = "arm7tdmi",    .initfn = arm7tdmi_initfn },
     { .name = "arm926",      .initfn = arm926_initfn },
     { .name = "arm946",      .initfn = arm946_initfn },
     { .name = "arm1026",     .initfn = arm1026_initfn },

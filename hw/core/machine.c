@@ -288,6 +288,36 @@ static void machine_set_append(Object *obj, const char *value, Error **errp)
     ms->kernel_cmdline = g_strdup(value);
 }
 
+static char *machine_get_bootloader(Object *obj, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    return g_strdup(ms->bootloader);
+}
+
+static void machine_set_bootloader(Object *obj, const char *value, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    g_free(ms->bootloader);
+    ms->bootloader = g_strdup(value);
+}
+
+static char *machine_get_iram(Object *obj, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    return g_strdup(ms->iram);
+}
+
+static void machine_set_iram(Object *obj, const char *value, Error **errp)
+{
+    MachineState *ms = MACHINE(obj);
+
+    g_free(ms->iram);
+    ms->iram = g_strdup(value);
+}
+
 static char *machine_get_dtb(Object *obj, Error **errp)
 {
     MachineState *ms = MACHINE(obj);
@@ -882,6 +912,16 @@ static void machine_class_init(ObjectClass *oc, void *data)
         machine_get_append, machine_set_append);
     object_class_property_set_description(oc, "append",
         "Linux kernel command line");
+
+    object_class_property_add_str(oc, "bootloader",
+        machine_get_bootloader, machine_set_bootloader);
+    object_class_property_set_description(oc, "bootloader",
+        "Tegra bootloader image file");
+
+    object_class_property_add_str(oc, "iram",
+        machine_get_iram, machine_set_iram);
+    object_class_property_set_description(oc, "iram",
+        "Tegra IRAM image file containing BCT");
 
     object_class_property_add_str(oc, "dtb",
         machine_get_dtb, machine_set_dtb);

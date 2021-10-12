@@ -6255,7 +6255,7 @@ static bool trans_WFE(DisasContext *s, arg_WFE *a)
      * which are *one* of many ways to wake the CPU from WFE, are not
      * implemented so we can't sleep like WFI does.
      */
-    if (!(tb_cflags(s->base.tb) & CF_PARALLEL)) {
+    if (!(tb_cflags(s->base.tb) & CF_PARALLEL) || 1) {
         gen_set_pc_im(s, s->base.pc_next);
         s->base.is_jmp = DISAS_WFE;
     }
@@ -9728,7 +9728,8 @@ static void arm_tr_tb_stop(DisasContextBase *dcbase, CPUState *cpu)
         switch (dc->base.is_jmp) {
         case DISAS_NEXT:
         case DISAS_TOO_MANY:
-            gen_goto_tb(dc, 1, dc->base.pc_next);
+            if (!dc->condjmp)
+                gen_goto_tb(dc, 1, dc->base.pc_next);
             break;
         case DISAS_UPDATE_NOCHAIN:
             gen_set_pc_im(dc, dc->base.pc_next);

@@ -300,7 +300,9 @@ struct MachineState {
 
     void *fdt;
     char *dtb;
+    char *iram;
     char *dumpdtb;
+    char *bootloader;
     int phandle_start;
     char *dt_compatible;
     bool dump_guest_core;

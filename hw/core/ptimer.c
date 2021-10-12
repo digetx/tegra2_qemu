@@ -46,7 +46,8 @@ struct ptimer_state
 /* Use a bottom-half routine to avoid reentrancy issues.  */
 static void ptimer_trigger(ptimer_state *s)
 {
-    s->callback(s->callback_opaque);
+    if (s->callback)
+        s->callback(s->callback_opaque);
 }
 
 static void ptimer_reload(ptimer_state *s, int delta_adjust)
@@ -253,7 +254,7 @@ uint64_t ptimer_get_count(ptimer_state *s)
             } else {
                 if (shift != 0)
                     div |= (period_frac >> (32 - shift));
-                /* Look at remaining bits of period_frac and round div up if 
+                /* Look at remaining bits of period_frac and round div up if
                    necessary.  */
                 if ((uint32_t)(period_frac << shift))
                     div += 1;
@@ -459,9 +460,6 @@ ptimer_state *ptimer_init(ptimer_cb callback, void *callback_opaque,
                           uint8_t policy_mask)
 {
     ptimer_state *s;
-
-    /* The callback function is mandatory. */
-    assert(callback);
 
     s = g_new0(ptimer_state, 1);
     s->timer = timer_new_ns(QEMU_CLOCK_VIRTUAL, ptimer_tick, s);
