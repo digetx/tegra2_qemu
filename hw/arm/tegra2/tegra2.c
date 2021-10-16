@@ -45,6 +45,9 @@
 #include "tegra_cpu.h"
 #include "tegra_trace.h"
 
+#include "bundle/boot_iram.bin.h"
+#include "bundle/u_boot_dtb_tegra.bin.h"
+
 #define DIRQ(X) qdev_get_gpio_in(tegra_irq_dispatcher_dev, X)
 #define DIRQ_INT(X) qdev_get_gpio_in(tegra_irq_dispatcher_dev, X + INT_MAIN_NR)
 
@@ -188,25 +191,30 @@ static void load_memory_images(MachineState *machine)
     const char *dtb_path = machine->dtb;
     int tmp;
 
-    if (bootloader_path == NULL) {
-        fprintf(stderr, "-bootloader not specified\n");
-        exit(1);
-    }
-
     /* TODO: load bootloader from emmc */
     tegra_bootrom[JMP_FIXUP] = BOOTLOADER_BASE;
 
     for (tmp = 0; tmp < ARRAY_SIZE(tegra_bootrom); tmp++)
         tegra_bootrom[tmp] = tswap32(tegra_bootrom[tmp]);
 
-    /* Load bootloader */
-    assert(load_image_targphys(bootloader_path, BOOTLOADER_BASE,
-                               machine->ram_size - BOOTLOADER_BASE) > 0);
+    if (bootloader_path != NULL) {
+        /* Load bootloader */
+        assert(load_image_targphys(bootloader_path, BOOTLOADER_BASE,
+                                   machine->ram_size - BOOTLOADER_BASE) > 0);
+    } else {
+        printf("-bootloader not specified, falling back to bundled tegra u-boot\n");
+        rom_add_blob_fixed_as("bootloader", u_boot_tegra_bin, u_boot_tegra_bin_len,
+                              BOOTLOADER_BASE, &address_space_memory);
+    }
 
     if (iram_path != NULL) {
         /* Load BIT */
         assert(load_image_targphys(iram_path, TEGRA_IRAM_BASE,
                                    TEGRA_IRAM_SIZE) > 0);
+    } else {
+        printf("-iram not specified, falling back to bundled\n");
+        rom_add_blob_fixed_as("iram", iram_bin, iram_bin_len,
+                              TEGRA_IRAM_BASE, &address_space_memory);
     }
 
     /* Load IROM */
