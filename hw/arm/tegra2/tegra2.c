@@ -628,16 +628,28 @@ static void __tegra2_machine_init(MachineClass *mc)
     mc->ignore_memory_transaction_failures = true;
 }
 
+enum tegra_board_type tegra_board;
+
 static void tegra2_qemu_machine_init(MachineClass *mc)
 {
+    tegra_board = TEGRA2_BOARD_QEMU;
     __tegra2_machine_init(mc);
 }
 
 static void tegra2_alpha_machine_init(MachineClass *mc)
 {
     /* legacy alpha-version name */
+    tegra_board = TEGRA2_BOARD_QEMU;
     __tegra2_machine_init(mc);
 }
 
+static void tegra2_picasso_machine_init(MachineClass *mc)
+{
+    /* Acer A500 machine */
+    tegra_board = TEGRA2_BOARD_PICASSO;
+    __tegra2_machine_init(mc);
+}
+
+DEFINE_MACHINE("tegra2-picasso", tegra2_picasso_machine_init)
 DEFINE_MACHINE("tegra2-alpha", tegra2_alpha_machine_init)
 DEFINE_MACHINE("tegra2-qemu", tegra2_qemu_machine_init)

@@ -17,7 +17,19 @@
  *  with this program; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef TEGRA_COMMON_H
+#define TEGRA_COMMON_H
+
 #include "qemu/osdep.h"
 #include "hw/hw.h"
 #include "hw/qdev-properties.h"
 #include "migration/vmstate.h"
+
+enum tegra_board_type {
+    TEGRA2_BOARD_QEMU,
+    TEGRA2_BOARD_PICASSO,
+};
+
+extern enum tegra_board_type tegra_board;
+
+#endif

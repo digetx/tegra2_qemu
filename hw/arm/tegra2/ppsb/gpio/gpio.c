@@ -116,8 +116,8 @@ static uint64_t tegra_gpio_priv_read(void *opaque, hwaddr offset,
     case GPIO_IN_OFFSET:
         ret = p->gpio_in.reg32;
 
-        /* VOL KEYS */
-        if (port_nb == 16) {
+        /* VOL KEYS, active-low */
+        if (tegra_board == TEGRA2_BOARD_PICASSO && port_nb == 16) {
             ret |= (1 << 4);
             ret |= (1 << 5);
         }
