@@ -184,6 +184,10 @@ static void tegra2_create_cpus(void)
     set_is_tegra_cpu(TEGRA2_COP);
 }
 
+static struct arm_boot_info tegra_board_binfo = {
+    .board_id = -1, /* device-tree-only board */
+};
+
 static void load_memory_images(MachineState *machine)
 {
     const char *bootloader_path = machine->bootloader;
@@ -233,9 +237,12 @@ static void load_memory_images(MachineState *machine)
                                   machine->ram_size);
         assert(tmp > 0);
 
-        if (dtb_path != NULL)
-            assert(load_image_targphys(dtb_path, 0x1000000 + tmp,
-                                       machine->ram_size) > 0);
+        if (dtb_path != NULL) {
+            tegra_board_binfo.dtb_filename = dtb_path;
+
+            arm_load_dtb(0x1000000 + tmp, &tegra_board_binfo, machine->ram_size,
+                         &address_space_memory, machine);
+        }
     }
 }
 
