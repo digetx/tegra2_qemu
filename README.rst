@@ -1,3 +1,34 @@
+============
+Tegra README
+============
+
+Build
+=====
+
+.. code-block:: shell
+
+  cd tegra2_qemu
+  mkdir build && cd build
+  ../configure --target-list=arm-softmmu --disable-werror
+  ninja
+
+Run
+===
+
+.. code-block:: shell
+
+  ./qemu-system-arm -M tegra2-qemu -m 1024 -kernel arch/arm/boot/zImage -dtb arch/arm/boot/dts/tegra20-qemu.dtb -serial stdio -net nic,model=lan9118 -net user -device usb-tablet -device usb-kbd
+
+* Specify bootloader image patch using ``-bootloader`` argument.
+
+* Specify IRAM image patch using ``-iram`` argument.
+
+* Specify SD card image patch with ``-drive if=sd,file=sd.img``. See QEMU help for the rest of standard cmdline arguments.
+
+* Bootloader and IRAM are optional.
+
+* Kernel image is loaded at fixed address 0x1000000. DTB is appended to the kernel.
+
 ===========
 QEMU README
 ===========
