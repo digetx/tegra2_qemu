@@ -29,7 +29,7 @@ Run
 
 Kernel and DTB are available at `<https://github.com/grate-driver/linux>`_.
 
-U-Boot is available at `<https://github.com/grate-driver/u-boot`_, use ``qemu_tegra2_defconfig``.
+U-Boot is available at `<https://github.com/grate-driver/u-boot`_. Use ``qemu_tegra2_defconfig``.
 
 ===========
 QEMU README
