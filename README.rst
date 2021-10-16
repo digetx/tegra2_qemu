@@ -27,7 +27,7 @@ Run
 
 * Kernel image is loaded at fixed address 0x1000000. DTB is appended to the kernel.
 
-Kernel and DTB are available at `<https://github.com/grate-driver/linux>`_.
+Kernel and device-tree are available at `<https://github.com/grate-driver/linux>`_.
 
 U-Boot is available at `<https://github.com/grate-driver/u-boot>`_, use ``qemu_tegra2_defconfig``.
 
