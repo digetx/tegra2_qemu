@@ -377,14 +377,14 @@ static void tegra2_init(MachineState *machine)
     tegra_rtc_dev = sysbus_create_simple("tegra.rtc",
                                          TEGRA_RTC_BASE, DIRQ(INT_RTC));
 
-    /* SDHC4 controller */
+    /* SDHCI4 */
     {
         DeviceState *carddev;
         BlockBackend *blk;
         DriveInfo *di;
 
         tegra_sdhci4_dev = qdev_new(TYPE_SYSBUS_SDHCI);
-        qdev_prop_set_uint32(tegra_sdhci4_dev, "capareg", 0x5780A80);
+        qdev_prop_set_uint32(tegra_sdhci4_dev, "capareg", 0x5780A8A);
         sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_sdhci4_dev), &error_fatal);
 
         sysbus_mmio_map(SYS_BUS_DEVICE(tegra_sdhci4_dev), 0, TEGRA_SDMMC4_BASE);
