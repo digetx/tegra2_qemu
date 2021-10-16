@@ -33,6 +33,7 @@
 typedef struct tegra_mc_state {
     SysBusDevice parent_obj;
 
+    uint32_t ram_size_kb;
     MemoryRegion iomem;
     DEFINE_REG32(emem_cfg);
     DEFINE_REG32(emem_adr_cfg);
@@ -1093,7 +1094,7 @@ static void tegra_mc_priv_reset(DeviceState *dev)
 {
     tegra_mc *s = TEGRA_MC(dev);
 
-    s->emem_cfg.reg32 = EMEM_CFG_RESET;
+    s->emem_cfg.reg32 = s->ram_size_kb;
     s->emem_adr_cfg.reg32 = EMEM_ADR_CFG_RESET;
     s->emem_arb_cfg0.reg32 = EMEM_ARB_CFG0_RESET;
     s->emem_arb_cfg1.reg32 = EMEM_ARB_CFG1_RESET;
@@ -1234,10 +1235,16 @@ static void tegra_mc_priv_realize(DeviceState *dev, Error **errp)
     sysbus_init_mmio(SYS_BUS_DEVICE(dev), &s->iomem);
 }
 
+static Property tegra_mc_properties[] = {
+    DEFINE_PROP_UINT32("ram_size_kb", tegra_mc, ram_size_kb, EMEM_CFG_RESET), \
+    DEFINE_PROP_END_OF_LIST(),
+};
+
 static void tegra_mc_class_init(ObjectClass *klass, void *data)
 {
     DeviceClass *dc = DEVICE_CLASS(klass);
 
+    device_class_set_props(dc, tegra_mc_properties);
     dc->realize = tegra_mc_priv_realize;
     dc->vmsd = &vmstate_tegra_mc;
     dc->reset = tegra_mc_priv_reset;

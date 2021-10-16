@@ -320,7 +320,10 @@ static void tegra2_init(MachineState *machine)
     tegra_emc_dev = sysbus_create_simple("tegra.emc", TEGRA_EMC_BASE, NULL);
 
     /* Memory controller */
-    tegra_mc_dev = sysbus_create_simple("tegra.mc", TEGRA_MC_BASE, NULL);
+    tegra_mc_dev = qdev_new("tegra.mc");
+    qdev_prop_set_uint32(tegra_mc_dev, "ram_size_kb", machine->ram_size / 1024);
+    sysbus_realize_and_unref(SYS_BUS_DEVICE(tegra_mc_dev), &error_fatal);
+    sysbus_mmio_map(SYS_BUS_DEVICE(tegra_mc_dev), 0, TEGRA_MC_BASE);
 
     /* AHB DMA controller */
     tegra_ahb_dma_dev = sysbus_create_simple("tegra.ahb_dma",
