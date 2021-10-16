@@ -17,7 +17,7 @@ Run
 
 .. code-block:: shell
 
-  ./qemu-system-arm -M tegra2-qemu -m 1024 -kernel arch/arm/boot/zImage -dtb arch/arm/boot/dts/tegra20-qemu.dtb -serial stdio -net nic,model=lan9118 -net user -device usb-tablet -device usb-kbd
+  ./qemu-system-arm -M tegra2-qemu -m 1024 -kernel arch/arm/boot/zImage -dtb arch/arm/boot/dts/tegra20-qemu.dtb --append "earlyprintk=1 console=ttyS0" -serial stdio -net nic,model=lan9118 -net user -device usb-tablet -device usb-kbd
 
 * Specify SD card image path with ``-drive if=sd,file=sd.img``. See QEMU help for the rest of standard cmdline arguments.
 
